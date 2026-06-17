@@ -2,10 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haversineKm } from '../utils/geoUtils';
-import { GPS_TASK_NAME } from '../../index';
-
-const SESSION_ID_KEY = 'kudora_active_session_id';
-const trailKey = (id) => `kudora_trail_${id}`;
+import { GPS_TASK_NAME, SESSION_ID_KEY, trailKey } from '../constants/gps';
 
 export function useGPSTracking() {
   const [isRecording, setIsRecording] = useState(false);
@@ -23,7 +20,7 @@ export function useGPSTracking() {
   const totalDist = useRef(0);
   const startTimeRef = useRef(null);
 
-  // Always-on low-accuracy watcher for the position dot
+  // Always-on low-accuracy watcher so the position dot shows even when not recording
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -47,9 +44,12 @@ export function useGPSTracking() {
 
   const startRecording = useCallback(async () => {
     const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') return;
+    if (fgStatus !== 'granted') {
+      console.log('[useGPSTracking] Foreground location permission denied');
+      return false;
+    }
 
-    // Best-effort — user may deny background, foreground still works
+    // Best-effort background permission — user may choose "While Using" only
     await Location.requestBackgroundPermissionsAsync();
 
     const id = `session_${Date.now()}`;
@@ -67,21 +67,21 @@ export function useGPSTracking() {
     setSpeed(0);
     setIsRecording(true);
 
-    // Background task — survives screen-off
+    // Background task — keeps GPS alive when screen turns off
     try {
       await Location.startLocationUpdatesAsync(GPS_TASK_NAME, {
         accuracy: Location.Accuracy.BestForNavigation,
         timeInterval: 5000,
         distanceInterval: 2,
         showsBackgroundLocationIndicator: true,
-        activityType: Location.ActivityType.Fitness,
       });
+      console.log('[useGPSTracking] Background task started');
     } catch (e) {
-      // Background location may not be available in Expo Go without "Always" permission
-      console.log('Background task:', e.message);
+      // Normal in Expo Go without "Always Allow" permission — foreground still records
+      console.log('[useGPSTracking] Background task unavailable:', e.message);
     }
 
-    // High-accuracy foreground watcher for real-time trail drawing
+    // High-accuracy foreground watcher — drives real-time trail updates
     recordingWatcher.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.BestForNavigation,
@@ -106,20 +106,20 @@ export function useGPSTracking() {
         lastCoord.current = coord;
         setTrailPoints((prev) => [...prev, coord]);
 
-        // Persist — background task also writes here, this covers foreground
         const sid = activeSessionId.current;
         if (!sid) return;
         const raw = await AsyncStorage.getItem(trailKey(sid));
-        const points = raw ? JSON.parse(raw) : [];
-        points.push({ ...coord, speed: spd, timestamp: loc.timestamp });
-        await AsyncStorage.setItem(trailKey(sid), JSON.stringify(points));
+        const pts = raw ? JSON.parse(raw) : [];
+        pts.push({ ...coord, speed: spd, timestamp: loc.timestamp });
+        await AsyncStorage.setItem(trailKey(sid), JSON.stringify(pts));
       }
     );
 
-    // Elapsed clock
     timer.current = setInterval(() => {
       setElapsed(Date.now() - startTimeRef.current);
     }, 1000);
+
+    return true;
   }, []);
 
   const stopRecording = useCallback(async () => {
@@ -130,7 +130,9 @@ export function useGPSTracking() {
     try {
       const running = await Location.hasStartedLocationUpdatesAsync(GPS_TASK_NAME);
       if (running) await Location.stopLocationUpdatesAsync(GPS_TASK_NAME);
-    } catch (e) {}
+    } catch (e) {
+      console.log('[useGPSTracking] Stop background task:', e.message);
+    }
 
     await AsyncStorage.removeItem(SESSION_ID_KEY);
     activeSessionId.current = null;

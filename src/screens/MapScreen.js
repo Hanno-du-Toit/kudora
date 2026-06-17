@@ -70,21 +70,25 @@ export default function MapScreen() {
     Animated.spring(btnScale, { toValue: 1, useNativeDriver: true }).start();
 
   const handleHunt = async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      await startRecording();
-      if (currentPosition && mapRef.current) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: currentPosition.latitude,
-            longitude: currentPosition.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          },
-          900
-        );
+    try {
+      if (isRecording) {
+        await stopRecording();
+      } else {
+        const ok = await startRecording();
+        if (ok && currentPosition && mapRef.current) {
+          mapRef.current.animateToRegion(
+            {
+              latitude: currentPosition.latitude,
+              longitude: currentPosition.longitude,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            },
+            900
+          );
+        }
       }
+    } catch (e) {
+      console.error('[MapScreen] handleHunt error:', e);
     }
   };
 
@@ -107,8 +111,7 @@ export default function MapScreen() {
         <UrlTile
           urlTemplate={TILES[mapType]}
           maximumZ={17}
-          flipY={false}
-          tileSize={256}
+          shouldReplaceMapContent
         />
         <TrailLayer points={trailPoints} />
         {currentPosition && <PositionDot coordinate={currentPosition} />}
