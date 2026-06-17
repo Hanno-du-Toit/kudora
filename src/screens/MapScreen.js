@@ -16,10 +16,11 @@ import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
-// ESRI World Topo Map — free, no API key, reliable global coverage with contour lines
-// Note: ESRI uses {z}/{y}/{x} tile order (y before x), not the OSM {z}/{x}/{y} order
+// ESRI World Terrain Base — label-free topographic hillshade tile.
+// Has NO text baked in, so Apple Maps provides the one clean label layer (no duplicates).
+// ESRI uses {z}/{y}/{x} tile order (y before x).
 const TOPO_TILE_URL =
-  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -51,14 +52,15 @@ export default function MapScreen() {
   useEffect(() => {
     Animated.timing(statsAnim, {
       toValue: isRecording ? 1 : 0,
-      duration: 320,
+      duration: 280,
       useNativeDriver: true,
     }).start();
   }, [isRecording]);
 
+  // Subtle upward slide: stats bar materialises from just above its resting position
   const statsTranslate = statsAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-72, 0],
+    outputRange: [-20, 0],
   });
 
   // Button press scale animation
@@ -104,6 +106,7 @@ export default function MapScreen() {
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
+        showsPointsOfInterest={false}
         toolbarEnabled={false}
         rotateEnabled={false}
       >
@@ -122,11 +125,13 @@ export default function MapScreen() {
       {/* ── Floating UI overlay ─────────────────────────────── */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 
-        {/* Stats bar — slides down when recording */}
+        {/* Stats bar — appears BELOW the GPS coords / toggle row when recording.
+            topBase = insets.top + 12.  Pill height ≈ 36 px.  Gap = 10 px.
+            So stats bar top = insets.top + 12 + 36 + 10 = insets.top + 58.        */}
         <Animated.View
           style={[
             styles.statsBar,
-            { top: insets.top, opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
+            { top: insets.top + 58, opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
           ]}
           pointerEvents="none"
         >
