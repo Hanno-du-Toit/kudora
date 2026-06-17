@@ -16,11 +16,9 @@ import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
-// ESRI World Terrain Base — label-free topographic hillshade tile.
-// Has NO text baked in, so Apple Maps provides the one clean label layer (no duplicates).
-// ESRI uses {z}/{y}/{x} tile order (y before x).
-const TOPO_TILE_URL =
-  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}';
+// OpenTopoMap — full contour lines, roads, and labels baked in.
+// mapType="none" suppresses the Apple Maps base so there are no duplicate labels.
+const TOPO_TILE_URL = 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -47,7 +45,7 @@ export default function MapScreen() {
     stopRecording,
   } = useGPSTracking();
 
-  // Stats bar slide-in animation
+  // Stats card slide-up animation
   const statsAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(statsAnim, {
@@ -57,10 +55,10 @@ export default function MapScreen() {
     }).start();
   }, [isRecording]);
 
-  // Subtle upward slide: stats bar materialises from just above its resting position
+  // Slides up 8px into resting position
   const statsTranslate = statsAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-20, 0],
+    outputRange: [8, 0],
   });
 
   // Button press scale animation
@@ -125,23 +123,6 @@ export default function MapScreen() {
       {/* ── Floating UI overlay ─────────────────────────────── */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 
-        {/* Stats bar — appears BELOW the GPS coords / toggle row when recording.
-            topBase = insets.top + 12.  Pill height ≈ 36 px.  Gap = 10 px.
-            So stats bar top = insets.top + 12 + 36 + 10 = insets.top + 58.        */}
-        <Animated.View
-          style={[
-            styles.statsBar,
-            { top: insets.top + 58, opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
-          ]}
-          pointerEvents="none"
-        >
-          <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} />
-          <View style={styles.statDivider} />
-          <StatCell label="TIME" value={formatElapsed(elapsed)} mono />
-          <View style={styles.statDivider} />
-          <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} />
-        </Animated.View>
-
         {/* GPS coordinate pill — top left */}
         <View
           style={[styles.coordPill, { top: topBase }]}
@@ -178,8 +159,24 @@ export default function MapScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Start / Stop Hunt button — floating bottom center */}
+        {/* Bottom stack: compact stats card + hunt button */}
         <View style={[styles.bottomRow, { paddingBottom: insets.bottom + 24 }]}>
+
+          {/* Compact stats card — floats above the hunt button when recording */}
+          <Animated.View
+            style={[
+              styles.statsCard,
+              { opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
+            ]}
+            pointerEvents="none"
+          >
+            <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} />
+            <View style={styles.statDivider} />
+            <StatCell label="TIME" value={formatElapsed(elapsed)} mono />
+            <View style={styles.statDivider} />
+            <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} />
+          </Animated.View>
+
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
               style={[
@@ -222,45 +219,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000',
-  },
-
-  // ── Stats bar ──────────────────────────────────────────────
-  statsBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(8, 8, 8, 0.88)',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.10)',
-    paddingHorizontal: 8,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    lineHeight: 22,
-  },
-  statLabel: {
-    color: 'rgba(255,255,255,0.42)',
-    fontSize: 9,
-    fontWeight: '600',
-    letterSpacing: 1.6,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  statDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.14)',
   },
 
   // ── Coord pill ─────────────────────────────────────────────
@@ -330,7 +288,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
 
-  // ── Hunt button ─────────────────────────────────────────────
+  // ── Bottom stack ────────────────────────────────────────────
   bottomRow: {
     position: 'absolute',
     bottom: 0,
@@ -338,6 +296,46 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+
+  // ── Compact stats card ──────────────────────────────────────
+  statsCard: {
+    width: 280,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(8, 8, 8, 0.88)',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    lineHeight: 20,
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.42)',
+    fontSize: 8,
+    fontWeight: '600',
+    letterSpacing: 1.6,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+
+  // ── Hunt button ─────────────────────────────────────────────
   huntBtn: {
     flexDirection: 'row',
     alignItems: 'center',
