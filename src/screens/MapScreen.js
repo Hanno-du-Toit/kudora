@@ -16,9 +16,15 @@ import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
-// OpenTopoMap — full contour lines, roads, and labels baked in.
-// mapType="none" suppresses the Apple Maps base so there are no duplicate labels.
-const TOPO_TILE_URL = 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png';
+// CartoDB Dark Matter — dark, clean base with roads and place labels.
+// No Apple Maps below (mapType="none"), so labels appear exactly once.
+const TOPO_BASE_URL = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+
+// ESRI Hillshade — pure terrain shading, zero text.
+// Overlaid at 30 % opacity to add elevation depth without label duplication.
+// ESRI services use {z}/{y}/{x} tile order (y before x).
+const HILLSHADE_URL =
+  'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -45,7 +51,7 @@ export default function MapScreen() {
     stopRecording,
   } = useGPSTracking();
 
-  // Stats card slide-up animation
+  // Stats card fade + slide animation
   const statsAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(statsAnim, {
@@ -55,10 +61,10 @@ export default function MapScreen() {
     }).start();
   }, [isRecording]);
 
-  // Slides up 8px into resting position
+  // Slides down 8px into position from just above (natural reveal for a card below a button)
   const statsTranslate = statsAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [8, 0],
+    outputRange: [-8, 0],
   });
 
   // Button press scale animation
@@ -109,12 +115,22 @@ export default function MapScreen() {
         rotateEnabled={false}
       >
         {mapType === 'topo' && (
-          <UrlTile
-            key="topo"
-            urlTemplate={TOPO_TILE_URL}
-            maximumZ={17}
-            shouldReplaceMapContent
-          />
+          <>
+            {/* Dark base: replaces Apple Maps entirely — single source of labels */}
+            <UrlTile
+              key="carto-dark"
+              urlTemplate={TOPO_BASE_URL}
+              maximumZ={19}
+              shouldReplaceMapContent
+            />
+            {/* Terrain depth overlay: hillshade only, no text — no duplicate labels */}
+            <UrlTile
+              key="hillshade"
+              urlTemplate={HILLSHADE_URL}
+              maximumZ={13}
+              opacity={0.3}
+            />
+          </>
         )}
         <TrailLayer points={trailPoints} />
         {currentPosition && <PositionDot coordinate={currentPosition} />}
@@ -159,23 +175,8 @@ export default function MapScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Bottom stack: compact stats card + hunt button */}
+        {/* Bottom stack: hunt button, then stats card below it */}
         <View style={[styles.bottomRow, { paddingBottom: insets.bottom + 24 }]}>
-
-          {/* Compact stats card — floats above the hunt button when recording */}
-          <Animated.View
-            style={[
-              styles.statsCard,
-              { opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
-            ]}
-            pointerEvents="none"
-          >
-            <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} />
-            <View style={styles.statDivider} />
-            <StatCell label="TIME" value={formatElapsed(elapsed)} mono />
-            <View style={styles.statDivider} />
-            <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} />
-          </Animated.View>
 
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
@@ -199,6 +200,22 @@ export default function MapScreen() {
               </Text>
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Compact stats card — appears below the button while recording */}
+          <Animated.View
+            style={[
+              styles.statsCard,
+              { opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
+            ]}
+            pointerEvents="none"
+          >
+            <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} />
+            <View style={styles.statDivider} />
+            <StatCell label="TIME" value={formatElapsed(elapsed)} mono />
+            <View style={styles.statDivider} />
+            <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} />
+          </Animated.View>
+
         </View>
 
       </View>
@@ -297,44 +314,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Compact stats card ──────────────────────────────────────
-  statsCard: {
-    width: 280,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(8, 8, 8, 0.88)',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  statCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    lineHeight: 20,
-  },
-  statLabel: {
-    color: 'rgba(255,255,255,0.42)',
-    fontSize: 8,
-    fontWeight: '600',
-    letterSpacing: 1.6,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  statDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-
   // ── Hunt button ─────────────────────────────────────────────
   huntBtn: {
     flexDirection: 'row',
@@ -365,5 +344,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1.8,
+  },
+
+  // ── Compact stats card ──────────────────────────────────────
+  statsCard: {
+    width: 280,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(8, 8, 8, 0.88)',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    lineHeight: 20,
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.42)',
+    fontSize: 8,
+    fontWeight: '600',
+    letterSpacing: 1.6,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
 });
