@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,12 @@ import MapView, { UrlTile } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTheme } from '../store/ThemeContext';
+import { GREEN, RED_STOP } from '../constants/themes';
 import { useGPSTracking } from '../hooks/useGPSTracking';
 import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
-
-// CartoDB Dark Matter — dark, clean base with roads and place labels.
-const TOPO_BASE_URL = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-// ESRI Hillshade Dark — inverted shading designed for dark basemaps, no text.
-// Blends naturally on dark backgrounds; lights up peaks, shadows valleys.
-// ESRI services use {z}/{y}/{x} tile order (y before x).
-const HILLSHADE_URL =
-  'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade_Dark/MapServer/tile/{z}/{y}/{x}';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -38,6 +31,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const [mapType, setMapType] = useState('topo');
+  const { T, isDark, toggleTheme } = useTheme();
 
   const {
     isRecording,
@@ -50,6 +44,9 @@ export default function MapScreen() {
     stopRecording,
   } = useGPSTracking();
 
+  // Theme-aware dynamic styles
+  const S = useMemo(() => makeStyles(T), [T]);
+
   // Stats card fade + slide animation
   const statsAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -60,7 +57,7 @@ export default function MapScreen() {
     }).start();
   }, [isRecording]);
 
-  // Slides up 8px into position from just below (natural reveal for a card beneath a button)
+  // Slides up from just below the button into position
   const statsTranslate = statsAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [8, 0],
@@ -99,12 +96,14 @@ export default function MapScreen() {
   const topBase = insets.top + 12;
 
   return (
-    <View style={styles.root}>
+    <View style={[staticStyles.root, { backgroundColor: T.bg }]}>
       {/* Full-screen map */}
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={SOUTH_AFRICA}
+        // Always satellite so Apple Maps never renders text labels.
+        // CartoDB tiles with shouldReplaceMapContent cover it completely in topo mode.
         mapType="satellite"
         showsUserLocation={false}
         showsMyLocationButton={false}
@@ -117,19 +116,19 @@ export default function MapScreen() {
       >
         {mapType === 'topo' && (
           <>
-            {/* Dark base: replaces Apple Maps entirely — single source of labels */}
+            {/* Base: replaces satellite layer completely — single label source */}
             <UrlTile
-              key="carto-dark"
-              urlTemplate={TOPO_BASE_URL}
+              key={`base-${isDark ? 'dark' : 'light'}`}
+              urlTemplate={T.topoBase}
               maximumZ={19}
               shouldReplaceMapContent
             />
-            {/* Terrain depth overlay: hillshade only, no text */}
+            {/* Terrain depth: hillshade only, zero text */}
             <UrlTile
-              key="hillshade"
-              urlTemplate={HILLSHADE_URL}
+              key={`shade-${isDark ? 'dark' : 'light'}`}
+              urlTemplate={T.hillshadeUrl}
               maximumZ={16}
-              opacity={0.25}
+              opacity={T.hillshadeOpacity}
             />
           </>
         )}
@@ -142,48 +141,62 @@ export default function MapScreen() {
 
         {/* GPS coordinate pill — top left */}
         <View
-          style={[styles.coordPill, { top: topBase }]}
+          style={[S.coordPill, { top: topBase }]}
           pointerEvents="none"
         >
-          <View style={styles.coordDot} />
-          <Text style={styles.coordText}>
+          <View style={staticStyles.coordDot} />
+          <Text style={S.coordText}>
             {currentPosition
               ? `${formatCoord(currentPosition.latitude, 'N', 'S')}  ${formatCoord(currentPosition.longitude, 'E', 'W')}`
               : 'Acquiring GPS…'}
           </Text>
         </View>
 
-        {/* Map type toggle — top right */}
-        <View style={[styles.mapToggle, { top: topBase }]}>
+        {/* Top right: theme toggle + map type toggle */}
+        <View style={[staticStyles.topRight, { top: topBase }]}>
           <TouchableOpacity
-            style={[styles.toggleBtn, mapType === 'topo' && styles.toggleBtnActive]}
-            onPress={() => setMapType('topo')}
-            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            style={S.themeBtn}
+            onPress={toggleTheme}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={[styles.toggleText, mapType === 'topo' && styles.toggleTextActive]}>
-              TOPO
-            </Text>
+            <Ionicons
+              name={isDark ? 'sunny-outline' : 'moon-outline'}
+              size={14}
+              color={T.text}
+            />
           </TouchableOpacity>
-          <View style={styles.toggleDivider} />
-          <TouchableOpacity
-            style={[styles.toggleBtn, mapType === 'satellite' && styles.toggleBtnActive]}
-            onPress={() => setMapType('satellite')}
-            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-          >
-            <Text style={[styles.toggleText, mapType === 'satellite' && styles.toggleTextActive]}>
-              SAT
-            </Text>
-          </TouchableOpacity>
+
+          <View style={S.mapToggle}>
+            <TouchableOpacity
+              style={[staticStyles.toggleBtn, mapType === 'topo' && S.toggleBtnActive]}
+              onPress={() => setMapType('topo')}
+              hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            >
+              <Text style={[S.toggleText, mapType === 'topo' && S.toggleTextActive]}>
+                TOPO
+              </Text>
+            </TouchableOpacity>
+            <View style={S.toggleDivider} />
+            <TouchableOpacity
+              style={[staticStyles.toggleBtn, mapType === 'satellite' && S.toggleBtnActive]}
+              onPress={() => setMapType('satellite')}
+              hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            >
+              <Text style={[S.toggleText, mapType === 'satellite' && S.toggleTextActive]}>
+                SAT
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Bottom stack: hunt button, then stats card below it */}
-        <View style={[styles.bottomRow, { paddingBottom: insets.bottom + 24 }]}>
+        {/* Bottom stack: hunt button then stats card below */}
+        <View style={[staticStyles.bottomRow, { paddingBottom: insets.bottom + 24 }]}>
 
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
               style={[
-                styles.huntBtn,
-                isRecording ? styles.huntBtnStop : styles.huntBtnStart,
+                staticStyles.huntBtn,
+                isRecording ? staticStyles.huntBtnStop : staticStyles.huntBtnStart,
               ]}
               onPress={handleHunt}
               onPressIn={onPressIn}
@@ -194,9 +207,9 @@ export default function MapScreen() {
                 name={isRecording ? 'stop-circle' : 'location'}
                 size={22}
                 color="#fff"
-                style={styles.huntIcon}
+                style={staticStyles.huntIcon}
               />
-              <Text style={styles.huntLabel}>
+              <Text style={staticStyles.huntLabel}>
                 {isRecording ? 'STOP HUNT' : 'START HUNT'}
               </Text>
             </TouchableOpacity>
@@ -205,16 +218,16 @@ export default function MapScreen() {
           {/* Compact stats card — appears below the button while recording */}
           <Animated.View
             style={[
-              styles.statsCard,
+              S.statsCard,
               { opacity: statsAnim, transform: [{ translateY: statsTranslate }] },
             ]}
             pointerEvents="none"
           >
-            <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} />
-            <View style={styles.statDivider} />
-            <StatCell label="TIME" value={formatElapsed(elapsed)} mono />
-            <View style={styles.statDivider} />
-            <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} />
+            <StatCell label="DISTANCE" value={`${distance.toFixed(2)} km`} T={T} />
+            <View style={S.statDivider} />
+            <StatCell label="TIME" value={formatElapsed(elapsed)} mono T={T} />
+            <View style={S.statDivider} />
+            <StatCell label="SPEED" value={`${speed.toFixed(1)} km/h`} T={T} />
           </Animated.View>
 
         </View>
@@ -224,89 +237,130 @@ export default function MapScreen() {
   );
 }
 
-function StatCell({ label, value, mono }) {
+function StatCell({ label, value, mono, T }) {
   return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statValue, mono && { fontFamily: MONO }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={staticStyles.statCell}>
+      <Text style={[staticStyles.statValue, mono && { fontFamily: MONO }, { color: T.text }]}>
+        {value}
+      </Text>
+      <Text style={[staticStyles.statLabel, { color: T.textDim }]}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+// ── Theme-aware styles (recreated when theme changes) ───────────
+function makeStyles(T) {
+  return {
+    coordPill: {
+      position: 'absolute',
+      left: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: T.card,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: T.cardBorder,
+    },
+    coordText: {
+      fontFamily: MONO,
+      color: T.textMono,
+      fontSize: 10,
+      letterSpacing: 0.3,
+    },
+    themeBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: T.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: T.cardBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mapToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: T.card,
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: T.cardBorder,
+    },
+    toggleBtnActive: {
+      backgroundColor: T.toggleActive,
+    },
+    toggleText: {
+      color: T.toggleText,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1.4,
+    },
+    toggleTextActive: {
+      color: T.toggleTextActive,
+    },
+    toggleDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 20,
+      backgroundColor: T.divider,
+    },
+    statsCard: {
+      width: 280,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: T.card,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: T.cardBorder,
+      paddingVertical: 12,
+      marginTop: 12,
+    },
+    statDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 28,
+      backgroundColor: T.divider,
+    },
+  };
+}
+
+// ── Static styles (colours never change) ───────────────────────
+const staticStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000',
   },
 
-  // ── Coord pill ─────────────────────────────────────────────
-  coordPill: {
-    position: 'absolute',
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(8, 8, 8, 0.78)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.10)',
-  },
+  // GPS dot — always green (spec: position dot stays green in both themes)
   coordDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#5FCE5F',
+    backgroundColor: GREEN,
     marginRight: 7,
-    shadowColor: '#5FCE5F',
+    shadowColor: GREEN,
     shadowOpacity: 0.9,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 0 },
   },
-  coordText: {
-    fontFamily: MONO,
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 10,
-    letterSpacing: 0.3,
-  },
 
-  // ── Map type toggle ─────────────────────────────────────────
-  mapToggle: {
+  // ── Top right cluster ──────────────────────────────────────────
+  topRight: {
     position: 'absolute',
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(8, 8, 8, 0.78)',
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.10)',
+    gap: 8,
   },
+
+  // ── Map type toggle button (layout only, colours in makeStyles) ─
   toggleBtn: {
     paddingHorizontal: 14,
     paddingVertical: 9,
     minWidth: 44,
     alignItems: 'center',
   },
-  toggleBtnActive: {
-    backgroundColor: 'rgba(95, 206, 95, 0.18)',
-  },
-  toggleText: {
-    color: 'rgba(255,255,255,0.38)',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-  },
-  toggleTextActive: {
-    color: '#5FCE5F',
-  },
-  toggleDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
 
-  // ── Bottom stack ────────────────────────────────────────────
+  // ── Bottom stack ────────────────────────────────────────────────
   bottomRow: {
     position: 'absolute',
     bottom: 0,
@@ -315,7 +369,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Hunt button ─────────────────────────────────────────────
+  // ── Hunt button — fixed green/red, same in both themes ─────────
   huntBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -330,12 +384,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   huntBtnStart: {
-    backgroundColor: '#5FCE5F',
-    shadowColor: '#5FCE5F',
+    backgroundColor: GREEN,
+    shadowColor: GREEN,
   },
   huntBtnStop: {
-    backgroundColor: '#E24B4A',
-    shadowColor: '#E24B4A',
+    backgroundColor: RED_STOP,
+    shadowColor: RED_STOP,
   },
   huntIcon: {
     marginRight: 10,
@@ -347,41 +401,23 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
   },
 
-  // ── Compact stats card ──────────────────────────────────────
-  statsCard: {
-    width: 280,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(8, 8, 8, 0.88)',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
-    paddingVertical: 12,
-    marginTop: 12,
-  },
+  // ── Stats card cells (layout only, colours via T in StatCell) ──
   statCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statValue: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.4,
     lineHeight: 20,
   },
   statLabel: {
-    color: 'rgba(255,255,255,0.42)',
     fontSize: 8,
     fontWeight: '600',
     letterSpacing: 1.6,
     marginTop: 2,
     textTransform: 'uppercase',
-  },
-  statDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.14)',
   },
 });
