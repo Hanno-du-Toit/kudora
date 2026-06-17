@@ -15,6 +15,17 @@
         "NSLocationAlwaysUsageDescription": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
         "UIBackgroundModes": ["location"]
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Kudora uses your location to show your position on the map.",
+          "locationAlwaysAndWhenInUsePermission": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
+          "locationAlwaysPermission": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
+    ]
   }
 }

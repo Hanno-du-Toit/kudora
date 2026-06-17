@@ -43,14 +43,27 @@ export function useGPSTracking() {
   }, []);
 
   const startRecording = useCallback(async () => {
-    const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+    let fgStatus;
+    try {
+      const result = await Location.requestForegroundPermissionsAsync();
+      fgStatus = result.status;
+    } catch (e) {
+      console.error('[useGPSTracking] requestForegroundPermissionsAsync threw:', e.message);
+      console.error('→ Run "npx expo start -c" to clear cache, or use a dev build for full location support.');
+      return false;
+    }
+
     if (fgStatus !== 'granted') {
       console.log('[useGPSTracking] Foreground location permission denied');
       return false;
     }
 
     // Best-effort background permission — user may choose "While Using" only
-    await Location.requestBackgroundPermissionsAsync();
+    try {
+      await Location.requestBackgroundPermissionsAsync();
+    } catch (e) {
+      console.log('[useGPSTracking] Background permission request failed (expected in Expo Go):', e.message);
+    }
 
     const id = `session_${Date.now()}`;
     activeSessionId.current = id;

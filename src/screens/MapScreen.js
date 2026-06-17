@@ -16,11 +16,10 @@ import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
-const TILES = {
-  topo: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-  satellite:
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-};
+// ESRI World Topo Map — free, no API key, reliable global coverage with contour lines
+// Note: ESRI uses {z}/{y}/{x} tile order (y before x), not the OSM {z}/{x}/{y} order
+const TOPO_TILE_URL =
+  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -101,18 +100,21 @@ export default function MapScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={SOUTH_AFRICA}
-        mapType="none"
+        mapType={mapType === 'satellite' ? 'satellite' : 'none'}
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
         rotateEnabled={false}
       >
-        <UrlTile
-          urlTemplate={TILES[mapType]}
-          maximumZ={17}
-          shouldReplaceMapContent
-        />
+        {mapType === 'topo' && (
+          <UrlTile
+            key="topo"
+            urlTemplate={TOPO_TILE_URL}
+            maximumZ={17}
+            shouldReplaceMapContent
+          />
+        )}
         <TrailLayer points={trailPoints} />
         {currentPosition && <PositionDot coordinate={currentPosition} />}
       </MapView>
