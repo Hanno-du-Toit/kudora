@@ -5,7 +5,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Project
 
 Kudora — a personal family hunting GPS tracking app for iOS. Built with Expo (React Native),
-Mapbox, and Supabase. Used by Hanno, his dad, and his brother while hunting together.
+react-native-maps, and Supabase. Used by Hanno, his dad, and his brother while hunting together.
 
 Core purpose: track GPS trails offline, drop waypoints, see each other's routes after the hunt
 (or live when signal is available), and map farm boundaries by walking or driving them.
@@ -15,7 +15,7 @@ Core purpose: track GPS trails offline, drop waypoints, see each other's routes 
 - **Expo SDK** (latest stable) — React Native framework, no Mac required for builds
 - **expo-location** — background GPS tracking
 - **expo-task-manager** — keeps GPS running when screen is off
-- **@rnmapbox/maps** — map rendering, trail drawing, offline tile packs
+- **react-native-maps** — map rendering, trail drawing
 - **Supabase** — auth, database, realtime subscriptions
 - **EAS Build** — cloud iOS builds without a Mac
 - **React Navigation** — screen navigation
@@ -28,7 +28,6 @@ following in source files:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN`
 
 The `.env` file is in `.gitignore` — never commit it. Use `.env.example` with placeholder
 values so other developers know what variables are needed.
@@ -64,7 +63,7 @@ src/
     ui/             # Generic UI (Button, Badge, BottomSheet)
   screens/          # Top-level screen components
   hooks/            # Data and logic (useGPSTracking, useOfflineSync, useGroupSession)
-  services/         # External integrations (supabase.js, mapbox.js)
+  services/         # External integrations (supabase.js, maps.js)
   store/            # Local state (session, offline queue)
   constants/        # Colours, map styles, safety radius values, route names
   utils/            # Pure utility functions (distance calc, coordinate helpers)
@@ -75,14 +74,11 @@ src/
 ### GPS Trail Recording
 - Uses `expo-location` with `startLocationUpdatesAsync` in a background task
 - GPS points stored locally first (AsyncStorage), synced to Supabase when signal returns
-- Trail drawn on map as a `ShapeSource` + `LineLayer` in Mapbox
+- Trail drawn on map as a `Polyline` in react-native-maps
 - Each hunt session has a unique ID — points accumulate under that session
 
 ### Offline Maps
-- Mapbox offline packs downloaded before leaving home
-- User picks a region on the map, taps download, selects zoom range
-- Offline pack stored on device — map tiles load from local storage with zero signal
-- Offline packs managed in `src/services/mapbox.js`
+Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox can be swapped in later for offline map support.
 
 ### Waypoints and Markers
 - Tapping the map or pressing the waypoint button saves current GPS coords
@@ -126,7 +122,7 @@ src/
 5. **Verify before committing** — make sure the change works before committing.
    Never commit broken code.
 
-6. **Document quirks** — when you discover Mapbox constraints, Supabase RLS gotchas,
+6. **Document quirks** — when you discover react-native-maps constraints, Supabase RLS gotchas,
    or expo-location background task behaviour, note it here so it doesn't happen again.
 
 ## Git Workflow
@@ -158,8 +154,6 @@ src/
 
 - Background GPS on iOS requires `UIBackgroundModes: location` in app.json and the
   user to select "Always" for location permission — prompt this clearly in onboarding
-- Mapbox offline packs require the Mapbox token to be set in app.json under
-  `expo.plugins` config, not just as an env variable
 - Supabase Realtime connections should be cleaned up in `useEffect` return functions
   to avoid memory leaks on screen unmount
 - expo-task-manager background tasks must be registered at the top level of the app,
