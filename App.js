@@ -1,6 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 
 import MapScreen from './src/screens/MapScreen';
 import SessionsScreen from './src/screens/SessionsScreen';
@@ -13,15 +14,23 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="light" />
       <Tab.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: '#1a1a1a' },
+        screenOptions={({ route }) => ({
+          headerStyle: { backgroundColor: '#111', borderBottomColor: '#222' },
           headerTintColor: '#fff',
-          tabBarStyle: { backgroundColor: '#1a1a1a', borderTopColor: '#333' },
+          tabBarStyle: { backgroundColor: '#0d0d0d', borderTopColor: '#1f1f1f' },
           tabBarActiveTintColor: '#5FCE5F',
-          tabBarInactiveTintColor: '#888780',
-        }}
+          tabBarInactiveTintColor: '#555',
+          tabBarIcon: ({ focused, color, size }) => {
+            const icons = { Map: 'map', Sessions: 'trail-sign', Profile: 'person' };
+            return <Ionicons name={icons[route.name]} size={size} color={color} />;
+          },
+        })}
       >
-        <Tab.Screen name="Map" component={MapScreen} />
+        <Tab.Screen
+          name="Map"
+          component={MapScreen}
+          options={{ headerShown: false }}
+        />
         <Tab.Screen name="Sessions" component={SessionsScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
