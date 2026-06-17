@@ -17,14 +17,13 @@ import { PositionDot } from '../components/map/PositionDot';
 import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
 // CartoDB Dark Matter — dark, clean base with roads and place labels.
-// No Apple Maps below (mapType="none"), so labels appear exactly once.
 const TOPO_BASE_URL = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
 
-// ESRI Hillshade — pure terrain shading, zero text.
-// Overlaid at 30 % opacity to add elevation depth without label duplication.
+// ESRI Hillshade Dark — inverted shading designed for dark basemaps, no text.
+// Blends naturally on dark backgrounds; lights up peaks, shadows valleys.
 // ESRI services use {z}/{y}/{x} tile order (y before x).
 const HILLSHADE_URL =
-  'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
+  'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade_Dark/MapServer/tile/{z}/{y}/{x}';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -61,10 +60,10 @@ export default function MapScreen() {
     }).start();
   }, [isRecording]);
 
-  // Slides down 8px into position from just above (natural reveal for a card below a button)
+  // Slides up 8px into position from just below (natural reveal for a card beneath a button)
   const statsTranslate = statsAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-8, 0],
+    outputRange: [8, 0],
   });
 
   // Button press scale animation
@@ -106,11 +105,13 @@ export default function MapScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={SOUTH_AFRICA}
-        mapType={mapType === 'satellite' ? 'satellite' : 'none'}
+        mapType="satellite"
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         showsPointsOfInterest={false}
+        showsBuildings={false}
+        showsTraffic={false}
         toolbarEnabled={false}
         rotateEnabled={false}
       >
@@ -123,12 +124,12 @@ export default function MapScreen() {
               maximumZ={19}
               shouldReplaceMapContent
             />
-            {/* Terrain depth overlay: hillshade only, no text — no duplicate labels */}
+            {/* Terrain depth overlay: hillshade only, no text */}
             <UrlTile
               key="hillshade"
               urlTemplate={HILLSHADE_URL}
-              maximumZ={13}
-              opacity={0.3}
+              maximumZ={16}
+              opacity={0.25}
             />
           </>
         )}
