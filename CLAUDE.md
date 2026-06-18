@@ -42,6 +42,9 @@ This is a **public GitHub repository**. These rules are non-negotiable:
 - All Supabase tables must have RLS enabled
 - GPS coordinates stored in the database belong to authenticated users only — RLS policies
   must enforce that users can only read their own data or data explicitly shared with them
+- Run the **Security Review** skill on any sensitive feature before it ships —
+  authentication, anything that reads or writes GPS coordinates, and any group/route
+  sharing. It complements these non-negotiable rules and never overrides them.
 
 ## Supabase Table Policy
 
@@ -53,6 +56,10 @@ ALTER TABLE public.your_table_name ENABLE ROW LEVEL SECURITY;
 ```
 
 Then add appropriate RLS policies. Never leave a table without RLS.
+
+Use the **Database Expert** skill for schema design, writing and auditing RLS policies, and
+SQL/query optimisation. The GRANT + ENABLE RLS step above and the Security Rules remain
+mandatory regardless of what it suggests.
 
 ## Architecture
 
@@ -68,6 +75,12 @@ src/
   constants/        # Colours, map styles, safety radius values, route names
   utils/            # Pure utility functions (distance calc, coordinate helpers)
 ```
+
+Use the **API Designer** skill when designing new backend structure (Supabase tables,
+endpoints, RPC functions, sync contracts) so it fits this layout and the offline-first flow,
+and the **Refactoring Expert** skill for safe, behaviour-preserving refactors that keep
+changes focused. Neither overrides offline-first: local AsyncStorage first, Supabase sync
+second.
 
 ## Core Features and How They Work
 
@@ -124,6 +137,60 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
 
 6. **Document quirks** — when you discover react-native-maps constraints, Supabase RLS gotchas,
    or expo-location background task behaviour, note it here so it doesn't happen again.
+
+7. **Plan before building (medium/large tasks)** — for any non-trivial task, use the
+   `using-superpowers` skill to produce a structured plan BEFORE writing code. Do not start
+   coding before the plan exists. Break the work into logical, incremental steps, briefly
+   explain the key architectural decisions up front, then implement step by step — not all
+   at once. Validate each step works before moving to the next, and STOP if a step fails or
+   is incomplete rather than pushing ahead. Small, obvious fixes can skip the formal plan.
+   Use `Repomix` for whole-repo context and `Context7` for version-accurate library/API docs
+   while planning. This sits on top of the existing rules above — it never replaces "Check
+   existing components first", "Offline first", or "Keep changes focused".
+
+8. **Final review before finishing** — before calling any task done, run a review pass
+   covering: bugs, security issues, maintainability, performance, and edge cases. Use the
+   `Code Reviewer` skill for this pass, the `Security Review` skill for any sensitive feature
+   (see Security Rules), and the `Refactoring Expert` skill for any safe cleanup it surfaces.
+   This is in addition to — not a replacement for — "Verify before committing" above.
+
+## Skills and Tooling
+
+These skills and MCP tools support the workflow above. They work ALONGSIDE the existing
+project rules (offline-first GPS, Supabase RLS, security, UI standards) — they never replace
+them. If a skill's suggestion conflicts with a rule in this file, the rule wins. Detail for
+each lives in the relevant section; this is the grouped index.
+
+**Planning & context**
+- `using-superpowers` — mandatory structured planning for medium/large tasks; produces the
+  step-by-step plan before any code (see How to Operate steps 7–8).
+- `Repomix` — pack the whole repo into context when a change spans many files or you need a
+  full-codebase view before planning.
+- `Context7` — look up current, version-accurate docs/APIs (Expo, expo-location,
+  react-native-maps, Supabase). Prefer this over guessing from memory.
+- `Firecrawl` — scrape external web pages / extract structured data when a task needs
+  information that lives outside the repo.
+
+**Backend & data**
+- `Database Expert` — Supabase schema, RLS policy authoring/auditing, and SQL/query
+  optimisation (see Supabase Table Policy).
+- `API Designer` — backend structure (tables, endpoints, RPC, sync contracts) that fits the
+  Architecture layout and the offline-first flow (see Architecture).
+
+**Security**
+- `Security Review` — run on sensitive features before they ship; see Security Rules for
+  which ones and why it never replaces the non-negotiable rules.
+
+**Testing & verification**
+- `Playwright` — UI verification. Built for the web, so it has limited use on this React
+  Native mobile app; rely on it only where a web surface exists, otherwise verify on
+  device / Expo Go as usual.
+
+**Review & refactoring**
+- `Code Reviewer` — the final code-review pass before a task is done (see How to Operate
+  step 8).
+- `Refactoring Expert` — safe, behaviour-preserving refactors that keep changes focused
+  (see Architecture).
 
 ## Git Workflow
 
