@@ -1,86 +1,74 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View } from 'react-native';
-import { Marker } from 'react-native-maps';
+import { Animated } from 'react-native';
+import { Circle } from 'react-native-maps';
 import { isValidCoord } from '../../utils/geoUtils';
 
-export const PositionDot = React.memo(function PositionDot({ coordinate }) {
-  const ring = useRef(new Animated.Value(0)).current;
+// Bright, vivid green per the product colour spec.
+const GREEN = '#5FCE5F';
+const GREEN_RGB = '95, 206, 95';
 
-  // tracksViewChanges must be true only long enough for react-native-maps to capture
-  // the custom view into the marker image, then false. While it is true, iOS
-  // regenerates the marker image on every change/re-render and each regeneration can
-  // spawn a duplicate "ghost" marker at the (0,0) origin — the corner dot on START
-  // HUNT. The recording screen re-renders ~once a second (elapsed/trail/stats), so a
-  // long tracking window guarantees ghosts. We keep the window short and let React.memo
-  // (below) shield the marker from those parent re-renders entirely. After it settles
-  // the dot still follows GPS — the `coordinate` prop moves the marker natively.
-  const [tracks, setTracks] = useState(true);
+// Pulse ring grows from ~5 m to ~30 m (metres — Circles are drawn in map space).
+const MIN_RADIUS = 5;
+const MAX_RADIUS = 30;
+const PULSE_MS = 2000;
+
+// Current-position indicator built from native <Circle> overlays instead of a
+// custom-view <Marker>. Circles render directly on the map canvas, so there is no
+// marker image to regenerate — which removes the (0,0) "ghost" entirely — no
+// tracksViewChanges (so nothing freezes) and no remount/unmount workarounds (so it
+// never disappears on START/STOP HUNT). The pulse animates smoothly and continuously.
+export function PositionDot({ coordinate }) {
+  const t = useRef(new Animated.Value(0)).current;
+  const [pulse, setPulse] = useState({ radius: MIN_RADIUS, opacity: 0.4 });
 
   useEffect(() => {
+    // Circle radius is map-space metres, not a nativable transform, so we read the
+    // driver value in JS and update the ring's radius/opacity each frame. One small
+    // overlay re-rendering is cheap and gives a smooth expanding-and-fading ring.
+    const id = t.addListener(({ value }) => {
+      setPulse({
+        radius: MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * value,
+        opacity: 0.4 * (1 - value),
+      });
+    });
     const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(ring, {
-          toValue: 1,
-          duration: 1400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ring, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(t, {
+        toValue: 1,
+        duration: PULSE_MS,
+        useNativeDriver: false,
+      })
     );
     anim.start();
-    // Capture one clean frame of the view, then stop regenerating the image.
-    const stopTracking = setTimeout(() => {
-      setTracks(false);
-      anim.stop();
-    }, 700);
     return () => {
       anim.stop();
-      clearTimeout(stopTracking);
+      t.removeListener(id);
+      t.setValue(0);
     };
-  }, [ring]);
+  }, [t]);
 
-  // Never render a marker for an invalid/empty fix — that is what lands at (0,0).
+  // Never render at an invalid/empty fix — that is what would land at (0,0).
   if (!isValidCoord(coordinate)) return null;
 
-  const ringScale = ring.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.8] });
-  const ringOpacity = ring.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.7, 0.3, 0] });
-
   return (
-    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracks}>
-      <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-        {/* Pulsing outer ring */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            width: 30,
-            height: 30,
-            borderRadius: 15,
-            borderWidth: 2,
-            borderColor: '#5FCE5F',
-            opacity: ringOpacity,
-            transform: [{ scale: ringScale }],
-          }}
-        />
-        {/* Inner dot */}
-        <View
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: 7,
-            backgroundColor: '#5FCE5F',
-            borderWidth: 2.5,
-            borderColor: '#ffffff',
-            shadowColor: '#5FCE5F',
-            shadowOpacity: 0.9,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 0 },
-          }}
-        />
-      </View>
-    </Marker>
+    <>
+      {/* Pulsing outer ring — expands outward while fading to transparent */}
+      <Circle
+        center={coordinate}
+        radius={pulse.radius}
+        strokeColor={`rgba(${GREEN_RGB}, ${pulse.opacity})`}
+        fillColor={`rgba(${GREEN_RGB}, ${pulse.opacity * 0.35})`}
+        strokeWidth={2}
+        zIndex={1}
+      />
+      {/* Inner solid dot — bright green fill with a white border */}
+      <Circle
+        center={coordinate}
+        radius={4}
+        strokeColor="#ffffff"
+        strokeWidth={2}
+        fillColor={GREEN}
+        zIndex={2}
+      />
+    </>
   );
-});
+}

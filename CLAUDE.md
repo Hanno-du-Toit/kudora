@@ -160,42 +160,32 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   not inside components
 - GPS accuracy: use `Accuracy.BestForNavigation` during active hunt,
   `Accuracy.Balanced` in background to preserve battery
-- react-native-maps drops a `<Marker>`'s native annotation when sibling map children
-  remount or the children set changes (e.g. `<UrlTile>` layers remounting on theme
-  toggle via a changed `key`, or the topo tile fragment mounting/unmounting on
-  TOPO↔SAT switch). The marker's React element is preserved, so RN-maps never re-adds
-  the orphaned annotation and the marker silently vanishes. Fix: give the marker a
-  `key` that changes whenever the tile layers change (`pos-${isDark}-${mapType}` for
-  the position dot in MapScreen) so it remounts as a fresh instance and RN-maps adds a
-  new annotation. The GPS watcher and `currentPosition` state live in `useGPSTracking`
-  and are fully decoupled from theme, so they keep running across toggles — only the
-  native marker needed the remount fix.
-- The (0,0) "ghost" dot in the top-left corner on START HUNT is the iOS custom-view
-  `<Marker>` regenerating its image while `tracksViewChanges` is true. Every
-  regeneration can spawn a duplicate annotation at the map origin. The recording screen
-  re-renders ~once a second (elapsed/trail/stats), so a long tracking window guarantees
-  ghosts. The fix is layered — all of these together, in order of importance:
-  1. `tracksViewChanges` is true only briefly to capture one clean frame, then flips to
-     `false` (PositionDot uses a ~700ms `setTimeout`, and also stops the pulse loop).
-     After it settles RN-maps never regenerates the image, so no ghost in steady state.
-     The dot still follows GPS — the `coordinate` prop moves the marker natively.
-  2. `PositionDot` is wrapped in `React.memo` so the per-second recording re-render
-     storm never reaches the marker at all. (Memo is safe here because re-attaching the
-     marker after a theme/map/recording change happens via the `key` and the
-     `markerHidden` unmount below — NOT via re-renders — so memo only filters the
-     harmless storm.)
-  3. The marker `key` includes `isRecording` (`pos-${isDark}-${mapType}-${isRecording}`)
-     so it remounts on recording start/stop, re-running the short capture cycle. (A
-     remount reliably clears any existing ghost — confirmed because manually toggling
-     theme/map after START HUNT cleared it.)
-  4. `markerHidden` flag in MapScreen flips true for ~400ms when `isRecording` changes,
-     fully UNMOUNTING the dot across the transition so the old native annotation is
-     disposed before the fresh one mounts. The dot renders only when
-     `currentPosition && isValidCoord(currentPosition) && !markerHidden` (triple guard).
-  Note `showsUserLocation` MUST stay `false` (we draw our own dot; iOS's native blue dot
-  also flashes at 0,0 before its first fix), and `TrailLayer` must return null until it
-  has ≥2 valid points (a 1-point/empty Polyline draws a leg to the origin). Both were
-  already in place — they are NOT the ghost source, the Marker regeneration is.
+- The current-position dot is built from native `<Circle>` overlays (PositionDot), NOT
+  a custom-view `<Marker>`. This is the final design after a custom-view marker caused a
+  long string of problems: a custom-view `<Marker>` rasterises its children into a
+  marker image, and with `tracksViewChanges` true iOS regenerates that image on every
+  re-render — each regeneration can spawn a duplicate "ghost" annotation at the (0,0)
+  origin (the corner dot on START HUNT, since the recording screen re-renders ~1×/sec).
+  Working around it (short tracksViewChanges window, React.memo, key remount, a
+  `markerHidden` unmount) then caused a frozen pulse, a dull dot, and the dot vanishing
+  on START/STOP HUNT. Circles avoid the entire problem class:
+  - No marker image is rasterised → no regeneration → no (0,0) ghost. No
+    `tracksViewChanges` → nothing freezes. No remount/unmount → never disappears across
+    theme / TOPO-SAT / START-STOP transitions. None of those workarounds are needed.
+  - Two circles centred on `coordinate`: an outer ring whose radius animates 5 m → 30 m
+    while opacity fades 0.4 → 0 (looped for a smooth continuous pulse), and a small inner
+    `#5FCE5F` filled circle with a white stroke as the centre dot.
+  - Circle `radius` is map-space metres, not a nativable transform, so the pulse is
+    driven by an `Animated.Value` loop + a JS listener that updates the ring's
+    radius/opacity via state each frame (one tiny overlay re-rendering — cheap).
+  - Keep the `isValidCoord` guard in PositionDot so nothing ever renders at (0,0).
+  - Tradeoff to remember: Circles are sized in metres, so the dot scales with zoom —
+    it's prominent at hunt-level zoom but small when zoomed out to country level. That is
+    acceptable here because the map animates to the user on START HUNT. Do NOT switch
+    back to a custom-view Marker to get constant pixel size — that reintroduces the ghost.
+- Keep `showsUserLocation={false}` on the MapView (we draw our own dot; iOS's native blue
+  location dot also flashes at 0,0 before its first fix), and `TrailLayer` must return
+  null until it has ≥2 valid points (a 1-point/empty Polyline draws a leg to the origin).
 - GPS drift while stationary (e.g. sitting in a blind, or indoors) otherwise inflates
   distance and jitters the trail. Two filters in the recording path guard against it,
   applied in BOTH the foreground watcher (useGPSTracking) and the background task

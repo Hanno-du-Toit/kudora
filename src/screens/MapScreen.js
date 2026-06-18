@@ -16,7 +16,7 @@ import { GREEN, RED_STOP } from '../constants/themes';
 import { useGPSTracking } from '../hooks/useGPSTracking';
 import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
-import { formatElapsed, formatCoord, isValidCoord } from '../utils/geoUtils';
+import { formatElapsed, formatCoord } from '../utils/geoUtils';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -46,21 +46,6 @@ export default function MapScreen() {
 
   // Theme-aware dynamic styles
   const S = useMemo(() => makeStyles(T), [T]);
-
-  // Fully unmount the position dot for a few frames across a recording transition.
-  // Pressing START HUNT triggers a burst of re-renders that can leave an orphaned
-  // native annotation behind at the (0,0) origin (the corner "ghost" dot). Removing
-  // the marker entirely lets react-native-maps tear down the old annotation before a
-  // fresh one mounts, so no ghost survives the transition.
-  const [markerHidden, setMarkerHidden] = useState(false);
-  const prevRecording = useRef(isRecording);
-  useEffect(() => {
-    if (prevRecording.current === isRecording) return;
-    prevRecording.current = isRecording;
-    setMarkerHidden(true);
-    const t = setTimeout(() => setMarkerHidden(false), 400);
-    return () => clearTimeout(t);
-  }, [isRecording]);
 
   // Stats card fade + slide animation
   const statsAnim = useRef(new Animated.Value(0)).current;
@@ -149,20 +134,12 @@ export default function MapScreen() {
         )}
         <TrailLayer points={trailPoints} />
         {/*
-          key forces a fresh marker instance whenever the tile layers remount
-          (theme toggle or TOPO/SAT switch) AND when recording starts/stops. The
-          remount re-runs PositionDot's tracksViewChanges capture cycle, which
-          clears the iOS (0,0) ghost marker — confirmed because manually toggling
-          theme/map after START HUNT already fixed the ghost via the same remount.
-          currentPosition itself is unaffected — it lives in the GPS hook.
+          Native Circle overlays — no marker image, so no (0,0) ghost, no
+          tracksViewChanges freeze, and no remount/unmount needed. Stays put and
+          keeps pulsing across theme/map/recording changes. PositionDot guards its
+          own coordinate validity.
         */}
-        {/* Triple guard: real position, valid non-(0,0) coords, and not mid-transition */}
-        {currentPosition && isValidCoord(currentPosition) && !markerHidden && (
-          <PositionDot
-            key={`pos-${isDark ? 'dark' : 'light'}-${mapType}-${isRecording ? 'rec' : 'idle'}`}
-            coordinate={currentPosition}
-          />
-        )}
+        {currentPosition && <PositionDot coordinate={currentPosition} />}
       </MapView>
 
       {/* ── Floating UI overlay ─────────────────────────────── */}
