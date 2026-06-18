@@ -160,6 +160,18 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   not inside components
 - GPS accuracy: use `Accuracy.BestForNavigation` during active hunt,
   `Accuracy.Balanced` in background to preserve battery
+- react-native-maps drops a `<Marker>`'s native annotation when sibling map children
+  remount or the children set changes (e.g. `<UrlTile>` layers remounting on theme
+  toggle via a changed `key`, or the topo tile fragment mounting/unmounting on
+  TOPO↔SAT switch). The marker's React element is preserved, so RN-maps never re-adds
+  the orphaned annotation and the marker silently vanishes. Fix: give the marker a
+  `key` that changes whenever the tile layers change (`pos-${isDark}-${mapType}` for
+  the position dot in MapScreen) so it remounts as a fresh instance and RN-maps adds a
+  new annotation. Keep `tracksViewChanges` enabled on the marker so the live view is
+  drawn and never captured empty, and do NOT wrap such markers in `React.memo` — memo
+  suppresses the re-renders needed to keep the annotation attached. The GPS watcher and
+  `currentPosition` state live in `useGPSTracking` and are fully decoupled from theme,
+  so they keep running across toggles — only the native marker needed the remount fix.
 
 ## Build and Deployment
 

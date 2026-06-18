@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
-export const PositionDot = React.memo(function PositionDot({ coordinate }) {
+export function PositionDot({ coordinate }) {
   const ring = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -28,12 +28,13 @@ export const PositionDot = React.memo(function PositionDot({ coordinate }) {
   const ringOpacity = ring.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.7, 0.3, 0] });
 
   return (
-    // tracksViewChanges={false}: prevents react-native-maps from re-snapshotting the
-    // marker's view on every parent re-render (theme toggles, etc.). The native-driver
-    // animation drives the native view directly, so re-capturing would freeze it at
-    // whatever opacity the ring happens to be at — making the dot appear to vanish.
-    // Coordinate updates still propagate natively; only the view content is stable.
-    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+    // tracksViewChanges keeps the marker's native image live so the pulse renders and
+    // the dot is always (re)drawn after a fresh mount. The parent remounts this whole
+    // component via a `key` whenever the tile layers change (theme / TOPO-SAT), which
+    // is what guarantees react-native-maps re-adds the annotation rather than leaving
+    // it orphaned. Do NOT memoize this component — memoization suppresses exactly the
+    // re-renders needed to keep the marker attached.
+    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges>
       <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
         {/* Pulsing outer ring */}
         <Animated.View
@@ -66,4 +67,4 @@ export const PositionDot = React.memo(function PositionDot({ coordinate }) {
       </View>
     </Marker>
   );
-});
+}

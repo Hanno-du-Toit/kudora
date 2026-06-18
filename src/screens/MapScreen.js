@@ -133,7 +133,18 @@ export default function MapScreen() {
           </>
         )}
         <TrailLayer points={trailPoints} />
-        {currentPosition && <PositionDot coordinate={currentPosition} />}
+        {/*
+          key forces a fresh marker instance whenever the tile layers remount
+          (theme toggle or TOPO/SAT switch). Without it react-native-maps orphans
+          the existing annotation during the native children reshuffle and the dot
+          vanishes. currentPosition itself is unaffected — it lives in the GPS hook.
+        */}
+        {currentPosition && (
+          <PositionDot
+            key={`pos-${isDark ? 'dark' : 'light'}-${mapType}`}
+            coordinate={currentPosition}
+          />
+        )}
       </MapView>
 
       {/* ── Floating UI overlay ─────────────────────────────── */}
