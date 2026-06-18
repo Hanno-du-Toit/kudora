@@ -35,7 +35,7 @@ function ThemedApp() {
         })}
       >
         <Tab.Screen name="Map" component={MapScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Sessions" component={SessionsScreen} />
+        <Tab.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>

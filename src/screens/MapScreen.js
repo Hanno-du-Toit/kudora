@@ -73,7 +73,7 @@ export default function MapScreen() {
   const handleHunt = async () => {
     try {
       if (isRecording) {
-        await stopRecording();
+        await stopRecording(mapType);
       } else {
         const ok = await startRecording();
         if (ok && currentPosition && mapRef.current) {
