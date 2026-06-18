@@ -3,16 +3,17 @@ import { Animated, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { isValidCoord } from '../../utils/geoUtils';
 
-export function PositionDot({ coordinate }) {
+export const PositionDot = React.memo(function PositionDot({ coordinate }) {
   const ring = useRef(new Animated.Value(0)).current;
 
-  // tracksViewChanges must be true just long enough for react-native-maps to
-  // capture the custom view into the marker image, then false. Leaving it true
-  // makes iOS regenerate the marker image on every re-render (the elapsed timer,
-  // trail updates and stats all re-render the map ~once a second while recording)
-  // and spawn a duplicate "ghost" marker at the (0,0) map origin — the bug where
-  // a second dot jumps to the top-left corner on START HUNT. The dot still follows
-  // GPS via the `coordinate` prop, which moves the marker natively without tracking.
+  // tracksViewChanges must be true only long enough for react-native-maps to capture
+  // the custom view into the marker image, then false. While it is true, iOS
+  // regenerates the marker image on every change/re-render and each regeneration can
+  // spawn a duplicate "ghost" marker at the (0,0) origin — the corner dot on START
+  // HUNT. The recording screen re-renders ~once a second (elapsed/trail/stats), so a
+  // long tracking window guarantees ghosts. We keep the window short and let React.memo
+  // (below) shield the marker from those parent re-renders entirely. After it settles
+  // the dot still follows GPS — the `coordinate` prop moves the marker natively.
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
@@ -31,8 +32,11 @@ export function PositionDot({ coordinate }) {
       ])
     );
     anim.start();
-    // Capture a couple of pulse cycles, then stop regenerating the image.
-    const stopTracking = setTimeout(() => setTracks(false), 2200);
+    // Capture one clean frame of the view, then stop regenerating the image.
+    const stopTracking = setTimeout(() => {
+      setTracks(false);
+      anim.stop();
+    }, 700);
     return () => {
       anim.stop();
       clearTimeout(stopTracking);
@@ -79,4 +83,4 @@ export function PositionDot({ coordinate }) {
       </View>
     </Marker>
   );
-}
+});

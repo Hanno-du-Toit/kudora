@@ -170,27 +170,32 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   new annotation. The GPS watcher and `currentPosition` state live in `useGPSTracking`
   and are fully decoupled from theme, so they keep running across toggles — only the
   native marker needed the remount fix.
-- Do NOT leave `tracksViewChanges` permanently `true` on a custom-view `<Marker>`. On
-  iOS that makes RN-maps regenerate the marker image on every re-render and spawn a
-  duplicate "ghost" marker at the (0,0) origin — which appears as a second dot jumping
-  to the top-left corner. It fires whenever the map re-renders often, e.g. once
-  recording starts and the elapsed timer / trail / stats update every second. Pattern:
-  keep `tracksViewChanges` true only briefly to capture the view, then flip it to
-  `false` (PositionDot uses a ~2.2s `setTimeout`). The marker still tracks GPS because
-  the `coordinate` prop moves it natively without image regeneration.
-- If a ghost marker does slip through (e.g. the frequent re-renders right after START
-  HUNT), remounting the marker clears it — a fresh mount re-runs the capture cycle and
-  drops the orphaned ghost. The position dot's `key` therefore includes `isRecording`
-  as well as `isDark`/`mapType` (`pos-${isDark}-${mapType}-${isRecording}`) so it
-  remounts on recording start/stop, not just on theme/map changes. This was confirmed
-  empirically: toggling theme/map after START HUNT cleared the ghost via that remount,
-  so the recording transition now triggers the same remount automatically.
-- A keyed remount alone still let a ghost flash on START HUNT because the old and new
-  annotations co-exist for a frame. The reliable fix is to FULLY unmount the marker for
-  a few frames across the recording transition: MapScreen holds a `markerHidden` flag
-  that flips true for ~160ms when `isRecording` changes (then false), and the dot is
-  rendered only when `currentPosition && !markerHidden`. The gap lets react-native-maps
-  tear down the old native annotation before the fresh one mounts — no ghost survives.
+- The (0,0) "ghost" dot in the top-left corner on START HUNT is the iOS custom-view
+  `<Marker>` regenerating its image while `tracksViewChanges` is true. Every
+  regeneration can spawn a duplicate annotation at the map origin. The recording screen
+  re-renders ~once a second (elapsed/trail/stats), so a long tracking window guarantees
+  ghosts. The fix is layered — all of these together, in order of importance:
+  1. `tracksViewChanges` is true only briefly to capture one clean frame, then flips to
+     `false` (PositionDot uses a ~700ms `setTimeout`, and also stops the pulse loop).
+     After it settles RN-maps never regenerates the image, so no ghost in steady state.
+     The dot still follows GPS — the `coordinate` prop moves the marker natively.
+  2. `PositionDot` is wrapped in `React.memo` so the per-second recording re-render
+     storm never reaches the marker at all. (Memo is safe here because re-attaching the
+     marker after a theme/map/recording change happens via the `key` and the
+     `markerHidden` unmount below — NOT via re-renders — so memo only filters the
+     harmless storm.)
+  3. The marker `key` includes `isRecording` (`pos-${isDark}-${mapType}-${isRecording}`)
+     so it remounts on recording start/stop, re-running the short capture cycle. (A
+     remount reliably clears any existing ghost — confirmed because manually toggling
+     theme/map after START HUNT cleared it.)
+  4. `markerHidden` flag in MapScreen flips true for ~400ms when `isRecording` changes,
+     fully UNMOUNTING the dot across the transition so the old native annotation is
+     disposed before the fresh one mounts. The dot renders only when
+     `currentPosition && isValidCoord(currentPosition) && !markerHidden` (triple guard).
+  Note `showsUserLocation` MUST stay `false` (we draw our own dot; iOS's native blue dot
+  also flashes at 0,0 before its first fix), and `TrailLayer` must return null until it
+  has ≥2 valid points (a 1-point/empty Polyline draws a leg to the origin). Both were
+  already in place — they are NOT the ghost source, the Marker regeneration is.
 - GPS drift while stationary (e.g. sitting in a blind, or indoors) otherwise inflates
   distance and jitters the trail. Two filters in the recording path guard against it,
   applied in BOTH the foreground watcher (useGPSTracking) and the background task

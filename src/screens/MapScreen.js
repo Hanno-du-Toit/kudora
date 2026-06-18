@@ -16,7 +16,7 @@ import { GREEN, RED_STOP } from '../constants/themes';
 import { useGPSTracking } from '../hooks/useGPSTracking';
 import { TrailLayer } from '../components/map/TrailLayer';
 import { PositionDot } from '../components/map/PositionDot';
-import { formatElapsed, formatCoord } from '../utils/geoUtils';
+import { formatElapsed, formatCoord, isValidCoord } from '../utils/geoUtils';
 
 const SOUTH_AFRICA = {
   latitude: -28.4793,
@@ -58,7 +58,7 @@ export default function MapScreen() {
     if (prevRecording.current === isRecording) return;
     prevRecording.current = isRecording;
     setMarkerHidden(true);
-    const t = setTimeout(() => setMarkerHidden(false), 160);
+    const t = setTimeout(() => setMarkerHidden(false), 400);
     return () => clearTimeout(t);
   }, [isRecording]);
 
@@ -156,7 +156,8 @@ export default function MapScreen() {
           theme/map after START HUNT already fixed the ghost via the same remount.
           currentPosition itself is unaffected — it lives in the GPS hook.
         */}
-        {currentPosition && !markerHidden && (
+        {/* Triple guard: real position, valid non-(0,0) coords, and not mid-transition */}
+        {currentPosition && isValidCoord(currentPosition) && !markerHidden && (
           <PositionDot
             key={`pos-${isDark ? 'dark' : 'light'}-${mapType}-${isRecording ? 'rec' : 'idle'}`}
             coordinate={currentPosition}
