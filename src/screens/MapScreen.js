@@ -134,12 +134,18 @@ export default function MapScreen() {
         )}
         <TrailLayer points={trailPoints} />
         {/*
-          Native Circle overlays — no marker image, so no (0,0) ghost, no
-          tracksViewChanges freeze, and no remount/unmount needed. Stays put and
-          keeps pulsing across theme/map/recording changes. PositionDot guards its
-          own coordinate validity.
+          Screen-space Marker dot (constant size at all zooms, never tile-clipped).
+          key remounts it on theme / TOPO-SAT change so its native annotation
+          re-attaches after the tile layers reshuffle. Recording is NOT in the key —
+          it doesn't remount tiles, and the dot's static-capture + opacity-pulse stay
+          ghost-free across START/STOP HUNT. PositionDot guards its own coords.
         */}
-        {currentPosition && <PositionDot coordinate={currentPosition} />}
+        {currentPosition && (
+          <PositionDot
+            key={`pos-${isDark ? 'dark' : 'light'}-${mapType}`}
+            coordinate={currentPosition}
+          />
+        )}
       </MapView>
 
       {/* ── Floating UI overlay ─────────────────────────────── */}

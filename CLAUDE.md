@@ -160,29 +160,34 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   not inside components
 - GPS accuracy: use `Accuracy.BestForNavigation` during active hunt,
   `Accuracy.Balanced` in background to preserve battery
-- The current-position dot is built from native `<Circle>` overlays (PositionDot), NOT
-  a custom-view `<Marker>`. This is the final design after a custom-view marker caused a
-  long string of problems: a custom-view `<Marker>` rasterises its children into a
-  marker image, and with `tracksViewChanges` true iOS regenerates that image on every
-  re-render — each regeneration can spawn a duplicate "ghost" annotation at the (0,0)
-  origin (the corner dot on START HUNT, since the recording screen re-renders ~1×/sec).
-  Working around it (short tracksViewChanges window, React.memo, key remount, a
-  `markerHidden` unmount) then caused a frozen pulse, a dull dot, and the dot vanishing
-  on START/STOP HUNT. Circles avoid the entire problem class:
-  - No marker image is rasterised → no regeneration → no (0,0) ghost. No
-    `tracksViewChanges` → nothing freezes. No remount/unmount → never disappears across
-    theme / TOPO-SAT / START-STOP transitions. None of those workarounds are needed.
-  - Two circles centred on `coordinate`: an outer ring whose radius animates 5 m → 30 m
-    while opacity fades 0.4 → 0 (looped for a smooth continuous pulse), and a small inner
-    `#5FCE5F` filled circle with a white stroke as the centre dot.
-  - Circle `radius` is map-space metres, not a nativable transform, so the pulse is
-    driven by an `Animated.Value` loop + a JS listener that updates the ring's
-    radius/opacity via state each frame (one tiny overlay re-rendering — cheap).
+- The current-position dot (PositionDot) is two SCREEN-SPACE Markers: a static solid
+  centre dot on top and a separate breathing-opacity halo underneath. This is the final
+  design after trying both a custom-view animated Marker and native Circles, each of
+  which failed:
+  - Custom-view animated Marker: rasterises its children into an image, and with
+    `tracksViewChanges` true iOS regenerates that image on every re-render — each regen
+    can spawn a duplicate "ghost" at the (0,0) origin (the corner dot on START HUNT,
+    since recording re-renders ~1×/sec). Workarounds (short tracks window, memo, key
+    remount, markerHidden unmount) then froze the pulse / dulled the dot / made it vanish.
+  - Native `<Circle>`: no ghost, but radius is map-space metres so the dot is tiny and
+    disappears when zoomed out, and the ring gets CLIPPED into a hard-edged semicircle by
+    the `shouldReplaceMapContent` tiles (overlays render below/around the replace layer).
+  The Marker approach fixes both because Markers are constant pixel size at every zoom and
+  live in the annotation layer ABOVE all overlays (never tile-clipped). Ghost-free rules:
+  - Each marker keeps `tracksViewChanges` true only ~600 ms to capture one clean frame of
+    its STATIC view, then false forever — the image is never regenerated, so no ghost.
+  - The PULSE is a breathing OPACITY animation (Animated.Value loop on `MarkerAnimated`'s
+    `opacity` prop). `opacity` is a native annotation property applied to the cached
+    image, so it animates with NO regeneration. Do NOT animate scale/an expanding ring on
+    a marker — scale only animates with `tracksViewChanges` true (→ ghost) or it freezes.
+  - The dot `key` is `pos-${isDark}-${mapType}` so it remounts (and re-captures) when the
+    tile layers reshuffle on theme / TOPO-SAT change, re-attaching the annotation. These
+    transitions are calm (no re-render storm) so the brief capture window can't ghost.
+    `isRecording` is deliberately NOT in the key — recording doesn't remount tiles, and a
+    remount mid-recording would risk a ghost from the storm.
+  - Contrast on BOTH themes: white disc + dark outline ring + bright `#5FCE5F` centre +
+    green halo. Dark ring reads on light terrain, white ring + halo read on dark terrain.
   - Keep the `isValidCoord` guard in PositionDot so nothing ever renders at (0,0).
-  - Tradeoff to remember: Circles are sized in metres, so the dot scales with zoom —
-    it's prominent at hunt-level zoom but small when zoomed out to country level. That is
-    acceptable here because the map animates to the user on START HUNT. Do NOT switch
-    back to a custom-view Marker to get constant pixel size — that reintroduces the ghost.
 - Keep `showsUserLocation={false}` on the MapView (we draw our own dot; iOS's native blue
   location dot also flashes at 0,0 before its first fix), and `TrailLayer` must return
   null until it has ≥2 valid points (a 1-point/empty Polyline draws a leg to the origin).
