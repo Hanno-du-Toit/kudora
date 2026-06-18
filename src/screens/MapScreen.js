@@ -47,6 +47,21 @@ export default function MapScreen() {
   // Theme-aware dynamic styles
   const S = useMemo(() => makeStyles(T), [T]);
 
+  // Fully unmount the position dot for a few frames across a recording transition.
+  // Pressing START HUNT triggers a burst of re-renders that can leave an orphaned
+  // native annotation behind at the (0,0) origin (the corner "ghost" dot). Removing
+  // the marker entirely lets react-native-maps tear down the old annotation before a
+  // fresh one mounts, so no ghost survives the transition.
+  const [markerHidden, setMarkerHidden] = useState(false);
+  const prevRecording = useRef(isRecording);
+  useEffect(() => {
+    if (prevRecording.current === isRecording) return;
+    prevRecording.current = isRecording;
+    setMarkerHidden(true);
+    const t = setTimeout(() => setMarkerHidden(false), 160);
+    return () => clearTimeout(t);
+  }, [isRecording]);
+
   // Stats card fade + slide animation
   const statsAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -141,7 +156,7 @@ export default function MapScreen() {
           theme/map after START HUNT already fixed the ghost via the same remount.
           currentPosition itself is unaffected — it lives in the GPS hook.
         */}
-        {currentPosition && (
+        {currentPosition && !markerHidden && (
           <PositionDot
             key={`pos-${isDark ? 'dark' : 'light'}-${mapType}-${isRecording ? 'rec' : 'idle'}`}
             coordinate={currentPosition}

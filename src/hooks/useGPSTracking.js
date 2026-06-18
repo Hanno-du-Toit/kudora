@@ -2,7 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haversineKm, isValidCoord } from '../utils/geoUtils';
-import { GPS_TASK_NAME, SESSION_ID_KEY, trailKey } from '../constants/gps';
+import {
+  GPS_TASK_NAME,
+  SESSION_ID_KEY,
+  trailKey,
+  MIN_MOVE_METERS,
+  MAX_ACCURACY_METERS,
+} from '../constants/gps';
 import { saveHunt } from '../services/huntStorage';
 
 export function useGPSTracking() {
@@ -110,14 +116,24 @@ export function useGPSTracking() {
         };
         // Ignore empty/garbage fixes so the dot and trail never jump to (0,0)
         if (!isValidCoord(coord)) return;
+
+        // Drop weak fixes — they wander and would inflate distance / jitter the trail
+        const acc = loc.coords.accuracy;
+        if (acc != null && acc > MAX_ACCURACY_METERS) return;
+
         const spd = Math.max(0, (loc.coords.speed ?? 0) * 3.6);
 
+        // Dot tracks live position even for sub-threshold moves so it stays responsive
         setCurrentPosition(coord);
         setSpeed(spd);
 
+        // Movement filter: only record a point / count distance once the hunter has
+        // actually moved MIN_MOVE_METERS from the last recorded point. This filters
+        // GPS drift while stationary so the distance counter stops creeping up.
         if (lastCoord.current) {
-          const d = haversineKm(lastCoord.current, coord);
-          totalDist.current += d;
+          const movedM = haversineKm(lastCoord.current, coord) * 1000;
+          if (movedM < MIN_MOVE_METERS) return;
+          totalDist.current += movedM / 1000;
           setDistance(totalDist.current);
         }
         lastCoord.current = coord;

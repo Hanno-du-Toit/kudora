@@ -185,6 +185,21 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   remounts on recording start/stop, not just on theme/map changes. This was confirmed
   empirically: toggling theme/map after START HUNT cleared the ghost via that remount,
   so the recording transition now triggers the same remount automatically.
+- A keyed remount alone still let a ghost flash on START HUNT because the old and new
+  annotations co-exist for a frame. The reliable fix is to FULLY unmount the marker for
+  a few frames across the recording transition: MapScreen holds a `markerHidden` flag
+  that flips true for ~160ms when `isRecording` changes (then false), and the dot is
+  rendered only when `currentPosition && !markerHidden`. The gap lets react-native-maps
+  tear down the old native annotation before the fresh one mounts — no ghost survives.
+- GPS drift while stationary (e.g. sitting in a blind, or indoors) otherwise inflates
+  distance and jitters the trail. Two filters in the recording path guard against it,
+  applied in BOTH the foreground watcher (useGPSTracking) and the background task
+  (index.js) so live and saved distance agree: (1) discard fixes whose reported
+  `accuracy` is worse than `MAX_ACCURACY_METERS` (20 m); (2) only record a trail point
+  / add to distance once the fix is at least `MIN_MOVE_METERS` (5 m) from the last
+  recorded point. Both thresholds live in `src/constants/gps.js`. The live position dot
+  still updates on sub-threshold moves so it stays responsive — only the trail/distance
+  are gated.
 - Guard every marker/polyline coordinate with `isValidCoord` (utils/geoUtils) — it
   rejects null/NaN and the {0,0} "null island" fix. An empty/uninitialised GPS fix is
   {0,0} and otherwise renders a stray marker or a polyline leg at the map origin. Both
