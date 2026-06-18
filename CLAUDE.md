@@ -167,11 +167,22 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   the orphaned annotation and the marker silently vanishes. Fix: give the marker a
   `key` that changes whenever the tile layers change (`pos-${isDark}-${mapType}` for
   the position dot in MapScreen) so it remounts as a fresh instance and RN-maps adds a
-  new annotation. Keep `tracksViewChanges` enabled on the marker so the live view is
-  drawn and never captured empty, and do NOT wrap such markers in `React.memo` — memo
-  suppresses the re-renders needed to keep the annotation attached. The GPS watcher and
-  `currentPosition` state live in `useGPSTracking` and are fully decoupled from theme,
-  so they keep running across toggles — only the native marker needed the remount fix.
+  new annotation. The GPS watcher and `currentPosition` state live in `useGPSTracking`
+  and are fully decoupled from theme, so they keep running across toggles — only the
+  native marker needed the remount fix.
+- Do NOT leave `tracksViewChanges` permanently `true` on a custom-view `<Marker>`. On
+  iOS that makes RN-maps regenerate the marker image on every re-render and spawn a
+  duplicate "ghost" marker at the (0,0) origin — which appears as a second dot jumping
+  to the top-left corner. It fires whenever the map re-renders often, e.g. once
+  recording starts and the elapsed timer / trail / stats update every second. Pattern:
+  keep `tracksViewChanges` true only briefly to capture the view, then flip it to
+  `false` (PositionDot uses a ~2.2s `setTimeout`). The marker still tracks GPS because
+  the `coordinate` prop moves it natively without image regeneration.
+- Guard every marker/polyline coordinate with `isValidCoord` (utils/geoUtils) — it
+  rejects null/NaN and the {0,0} "null island" fix. An empty/uninitialised GPS fix is
+  {0,0} and otherwise renders a stray marker or a polyline leg at the map origin. Both
+  the GPS watchers in useGPSTracking and the render layers (PositionDot, TrailLayer)
+  apply this guard.
 
 ## Build and Deployment
 

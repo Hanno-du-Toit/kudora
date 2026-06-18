@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { haversineKm } from '../utils/geoUtils';
+import { haversineKm, isValidCoord } from '../utils/geoUtils';
 import { GPS_TASK_NAME, SESSION_ID_KEY, trailKey } from '../constants/gps';
 import { saveHunt } from '../services/huntStorage';
 
@@ -30,10 +30,11 @@ export function useGPSTracking() {
       idleWatcher.current = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 5 },
         (loc) => {
-          setCurrentPosition({
+          const coord = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
-          });
+          };
+          if (isValidCoord(coord)) setCurrentPosition(coord);
         }
       );
     })();
@@ -107,6 +108,8 @@ export function useGPSTracking() {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
         };
+        // Ignore empty/garbage fixes so the dot and trail never jump to (0,0)
+        if (!isValidCoord(coord)) return;
         const spd = Math.max(0, (loc.coords.speed ?? 0) * 3.6);
 
         setCurrentPosition(coord);

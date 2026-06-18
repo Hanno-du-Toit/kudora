@@ -1,9 +1,19 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
 import { Marker } from 'react-native-maps';
+import { isValidCoord } from '../../utils/geoUtils';
 
 export function PositionDot({ coordinate }) {
   const ring = useRef(new Animated.Value(0)).current;
+
+  // tracksViewChanges must be true just long enough for react-native-maps to
+  // capture the custom view into the marker image, then false. Leaving it true
+  // makes iOS regenerate the marker image on every re-render (the elapsed timer,
+  // trail updates and stats all re-render the map ~once a second while recording)
+  // and spawn a duplicate "ghost" marker at the (0,0) map origin — the bug where
+  // a second dot jumps to the top-left corner on START HUNT. The dot still follows
+  // GPS via the `coordinate` prop, which moves the marker natively without tracking.
+  const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
     const anim = Animated.loop(
@@ -21,20 +31,22 @@ export function PositionDot({ coordinate }) {
       ])
     );
     anim.start();
-    return () => anim.stop();
+    // Capture a couple of pulse cycles, then stop regenerating the image.
+    const stopTracking = setTimeout(() => setTracks(false), 2200);
+    return () => {
+      anim.stop();
+      clearTimeout(stopTracking);
+    };
   }, [ring]);
+
+  // Never render a marker for an invalid/empty fix — that is what lands at (0,0).
+  if (!isValidCoord(coordinate)) return null;
 
   const ringScale = ring.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.8] });
   const ringOpacity = ring.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.7, 0.3, 0] });
 
   return (
-    // tracksViewChanges keeps the marker's native image live so the pulse renders and
-    // the dot is always (re)drawn after a fresh mount. The parent remounts this whole
-    // component via a `key` whenever the tile layers change (theme / TOPO-SAT), which
-    // is what guarantees react-native-maps re-adds the annotation rather than leaving
-    // it orphaned. Do NOT memoize this component — memoization suppresses exactly the
-    // re-renders needed to keep the marker attached.
-    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges>
+    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracks}>
       <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
         {/* Pulsing outer ring */}
         <Animated.View

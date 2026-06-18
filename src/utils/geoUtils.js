@@ -1,5 +1,17 @@
 const DEG2RAD = Math.PI / 180;
 
+// True only for a usable GPS fix. Rejects null/undefined, NaN/Infinity, and the
+// {0,0} "null island" coordinate that an empty/uninitialised fix produces — which
+// otherwise renders a stray marker at the map origin.
+export function isValidCoord(c) {
+  return (
+    !!c &&
+    Number.isFinite(c.latitude) &&
+    Number.isFinite(c.longitude) &&
+    !(c.latitude === 0 && c.longitude === 0)
+  );
+}
+
 export function haversineKm(a, b) {
   const dLat = (b.latitude - a.latitude) * DEG2RAD;
   const dLon = (b.longitude - a.longitude) * DEG2RAD;
