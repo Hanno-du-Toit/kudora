@@ -7,8 +7,14 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "ios": {
       "supportsTablet": false,
+      "icon": "./assets/icon.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kudora uses your location to show your position on the map.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
