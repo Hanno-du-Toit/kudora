@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
-export function PositionDot({ coordinate }) {
+export const PositionDot = React.memo(function PositionDot({ coordinate }) {
   const ring = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(ring, {
           toValue: 1,
@@ -19,14 +19,21 @@ export function PositionDot({ coordinate }) {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    anim.start();
+    return () => anim.stop();
   }, [ring]);
 
   const ringScale = ring.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.8] });
   const ringOpacity = ring.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.7, 0.3, 0] });
 
   return (
-    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges>
+    // tracksViewChanges={false}: prevents react-native-maps from re-snapshotting the
+    // marker's view on every parent re-render (theme toggles, etc.). The native-driver
+    // animation drives the native view directly, so re-capturing would freeze it at
+    // whatever opacity the ring happens to be at — making the dot appear to vanish.
+    // Coordinate updates still propagate natively; only the view content is stable.
+    <Marker coordinate={coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
       <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
         {/* Pulsing outer ring */}
         <Animated.View
@@ -59,4 +66,4 @@ export function PositionDot({ coordinate }) {
       </View>
     </Marker>
   );
-}
+});
