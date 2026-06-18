@@ -128,10 +128,38 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
 ## Git Workflow
 
 - Commit after every meaningful working change
-- Commit messages: short and descriptive — `add waypoint drop button`,
-  `fix GPS trail not rendering on cold start`, `implement offline sync queue`
-- Never commit: `.env`, API keys, node_modules, build outputs
 - Branch when building a full new feature, merge when stable
+
+### Commit message rules
+
+- Use clean, clear, descriptive messages in plain language. Keep them short but
+  accurate to what really happened.
+- Never include any private or sensitive information in a commit message — no keys,
+  tokens, emails, personal data, or account numbers.
+- Be honest about what a commit actually does. Do not overstate it:
+  - Only use `fix` when something is genuinely confirmed fixed and tested working —
+    e.g. `fix GPS trail not rendering on cold start`.
+  - If a change is an ATTEMPT that has not been confirmed working yet, prefix with
+    `attempt:` or `try:` — e.g. `attempt: reduce position dot ghost on recording start`.
+  - When iterating on the same bug across multiple commits, make that clear — e.g.
+    `wip: position dot ghost - still investigating`.
+  - Use `wip:` for incomplete work.
+  - Once the user confirms something works, the next commit can say so — e.g.
+    `confirmed: position dot ghost resolved`.
+- Good examples: `add waypoint drop button`, `implement offline sync queue`,
+  `attempt: clear corner ghost via marker remount`, `wip: Sessions list layout`.
+
+### Push policy
+
+- Always push to `origin/main-CleanVersion` immediately after every commit.
+- Never leave commits unpushed — the user wants to see all progress on GitHub in real
+  time. A commit is not "done" until it is pushed.
+
+### Privacy
+
+- This is a PUBLIC repo. Never commit `.env`, API keys, tokens, emails, personal data,
+  node_modules, or build outputs.
+- Double-check that no sensitive data is in any changed file before committing.
 
 ## UI Standards
 
