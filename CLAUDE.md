@@ -178,6 +178,13 @@ Currently using react-native-maps with OpenStreetMap (free, no API key). Mapbox 
   keep `tracksViewChanges` true only briefly to capture the view, then flip it to
   `false` (PositionDot uses a ~2.2s `setTimeout`). The marker still tracks GPS because
   the `coordinate` prop moves it natively without image regeneration.
+- If a ghost marker does slip through (e.g. the frequent re-renders right after START
+  HUNT), remounting the marker clears it — a fresh mount re-runs the capture cycle and
+  drops the orphaned ghost. The position dot's `key` therefore includes `isRecording`
+  as well as `isDark`/`mapType` (`pos-${isDark}-${mapType}-${isRecording}`) so it
+  remounts on recording start/stop, not just on theme/map changes. This was confirmed
+  empirically: toggling theme/map after START HUNT cleared the ghost via that remount,
+  so the recording transition now triggers the same remount automatically.
 - Guard every marker/polyline coordinate with `isValidCoord` (utils/geoUtils) — it
   rejects null/NaN and the {0,0} "null island" fix. An empty/uninitialised GPS fix is
   {0,0} and otherwise renders a stray marker or a polyline leg at the map origin. Both

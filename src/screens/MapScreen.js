@@ -135,13 +135,15 @@ export default function MapScreen() {
         <TrailLayer points={trailPoints} />
         {/*
           key forces a fresh marker instance whenever the tile layers remount
-          (theme toggle or TOPO/SAT switch). Without it react-native-maps orphans
-          the existing annotation during the native children reshuffle and the dot
-          vanishes. currentPosition itself is unaffected — it lives in the GPS hook.
+          (theme toggle or TOPO/SAT switch) AND when recording starts/stops. The
+          remount re-runs PositionDot's tracksViewChanges capture cycle, which
+          clears the iOS (0,0) ghost marker — confirmed because manually toggling
+          theme/map after START HUNT already fixed the ghost via the same remount.
+          currentPosition itself is unaffected — it lives in the GPS hook.
         */}
         {currentPosition && (
           <PositionDot
-            key={`pos-${isDark ? 'dark' : 'light'}-${mapType}`}
+            key={`pos-${isDark ? 'dark' : 'light'}-${mapType}-${isRecording ? 'rec' : 'idle'}`}
             coordinate={currentPosition}
           />
         )}
