@@ -1,31 +1,30 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeProvider, useTheme } from './src/store/ThemeContext';
+import { AuthProvider, useAuth } from './src/store/AuthContext';
+import { GREEN } from './src/constants/themes';
 import MapScreen from './src/screens/MapScreen';
 import SessionsScreen from './src/screens/SessionsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import AuthScreen from './src/screens/auth/AuthScreen';
 
 const Tab = createBottomTabNavigator();
 
-function ThemedApp() {
+function ThemedTabs() {
   const { T } = useTheme();
   return (
     <NavigationContainer>
       <StatusBar style={T.statusBar} />
       <Tab.Navigator
         screenOptions={({ route }) => ({
-          headerStyle: {
-            backgroundColor: T.headerBg,
-            borderBottomColor: T.headerBorder,
-          },
+          headerStyle: { backgroundColor: T.headerBg, borderBottomColor: T.headerBorder },
           headerTintColor: T.headerText,
-          tabBarStyle: {
-            backgroundColor: T.tabBar,
-            borderTopColor: T.tabBarBorder,
-          },
+          tabBarStyle: { backgroundColor: T.tabBar, borderTopColor: T.tabBarBorder },
           tabBarActiveTintColor: T.tabBarActive,
           tabBarInactiveTintColor: T.tabBarInactive,
           tabBarIcon: ({ color, size }) => {
@@ -42,10 +41,36 @@ function ThemedApp() {
   );
 }
 
+function Root() {
+  const { session, loading } = useAuth();
+  const { T } = useTheme();
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <StatusBar style={T.statusBar} />
+        <ActivityIndicator color={GREEN} />
+      </View>
+    );
+  }
+  if (!session) {
+    return (
+      <>
+        <StatusBar style={T.statusBar} />
+        <AuthScreen />
+      </>
+    );
+  }
+  return <ThemedTabs />;
+}
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <ThemedApp />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
