@@ -39,7 +39,11 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.log('[Auth] signOut failed:', e?.message);
+    }
   };
 
   return (

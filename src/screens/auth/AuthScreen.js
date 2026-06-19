@@ -17,6 +17,8 @@ function friendlyAuthError(error) {
     return 'That email is already registered';
   if (m.includes('username') || m.includes('duplicate') || m.includes('profiles_'))
     return 'That username is taken';
+  if (m.includes('database error') || m.includes('saving new user'))
+    return 'Could not create your account — please try again';
   if (m.includes('network') || m.includes('fetch'))
     return 'No signal — try again when you have a connection';
   if (m.includes('password')) return 'Password must be at least 6 characters';

@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
 
 export async function getMyProfile() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return null;
   const { data, error } = await supabase
     .from('profiles')
@@ -13,7 +14,8 @@ export async function getMyProfile() {
 }
 
 export async function updateMyProfile(patch) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) throw new Error('Not signed in');
   const allowed = {};
   if (patch.display_name != null)    allowed.display_name = patch.display_name;

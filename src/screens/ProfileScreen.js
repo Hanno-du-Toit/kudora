@@ -55,11 +55,13 @@ export default function ProfileScreen() {
   );
 
   const persistRange = async (field, value) => {
+    const previous = profile?.[field];
     setProfile((prev) => ({ ...prev, [field]: value }));   // optimistic
     try {
       await updateMyProfile({ [field]: value });
     } catch {
-      Alert.alert('Could not save', 'No signal — your change may not have saved.');
+      setProfile((prev) => ({ ...prev, [field]: previous }));   // revert on failure
+      Alert.alert('Could not save', 'No signal — your change was not saved.');
     }
   };
 
