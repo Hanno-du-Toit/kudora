@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FriendsScreen from './src/screens/FriendsScreen';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -29,8 +29,29 @@ function ProfileStackScreen() {
         contentStyle: { backgroundColor: T.bg },
       }}
     >
-      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ headerShown: false }} />
-      <ProfileStack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Friends' }} />
+      <ProfileStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
+        options={{ headerShown: false, title: 'Profile' }}
+      />
+      <ProfileStack.Screen
+        name="Friends"
+        component={FriendsScreen}
+        options={({ navigation }) => ({
+          title: 'Friends',
+          headerBackVisible: false, // hide the default native back button; use the custom one below
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingRight: 12 }}
+            >
+              <Ionicons name="chevron-back" size={26} color={T.headerText} />
+              <Text style={{ color: T.headerText, fontSize: 17 }}>Profile</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
     </ProfileStack.Navigator>
   );
 }
