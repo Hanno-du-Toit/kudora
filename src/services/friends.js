@@ -16,8 +16,10 @@ export async function listFriendships() {
 
 // Resolve an exact @handle, then insert a pending request (RLS: requester = me).
 export async function sendFriendRequest(handle) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw tagged('NOT_SIGNED_IN', 'Not signed in');
+  const { data, error: authErr } = await supabase.auth.getUser();
+  if (authErr) throw authErr;
+  if (!data?.user) throw tagged('NOT_SIGNED_IN', 'Not signed in');
+  const user = data.user;
 
   const { data: found, error: findErr } = await supabase.rpc('find_user_by_username', {
     handle: (handle ?? '').trim().toLowerCase(),
