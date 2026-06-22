@@ -1,5 +1,18 @@
 # Phase 1 — Auth + Profile Implementation Plan
 
+> ✅ **STATUS: COMPLETE (2026-06-22).** All 5 tasks implemented, committed, and pushed to
+> `origin/main-CleanVersion`. Both Supabase migrations run; "Confirm email" disabled in the
+> dashboard. Verified on device: signup, login, logout, and session persistence across
+> restart all work. Final review pass done (commit `9828c41`: hardened signup trigger,
+> auth error handling, offline-friendly profile reads).
+>
+> **Three flagged items — user decisions (2026-06-22):**
+> 1. **Username uniqueness** — leave as is (case-insensitive `unique(lower(username))`); no
+>    additional reservation/normalisation work.
+> 2. **`find_user_by_username` RPC** — keep as-is for now (exact-match, `SECURITY DEFINER`).
+> 3. **Profile labels** — "Visible range" (`safety_range_m`) / "Warning distance"
+>    (`warning_range_m`) wording is approved, no change.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Put the existing single-user app behind email/password authentication, give every user a unique `@handle` + display name, and build out the Profile screen (identity, two range settings, logout).
@@ -50,7 +63,7 @@ In the Supabase dashboard → **Authentication → Sign In / Providers → Email
 **Interfaces:**
 - Produces: table `public.profiles(id, username, display_name, safety_range_m, warning_range_m, created_at, updated_at)`; RPC `find_user_by_username(handle text) → setof (id uuid, username text, display_name text)`; trigger that auto-creates a profile row from `auth.users.raw_user_meta_data` keys `username`, `display_name`.
 
-- [ ] **Step 1: Write the migration file**
+- [x] **Step 1: Write the migration file**
 
 Create `supabase/migrations/0001_profiles.sql`:
 
@@ -144,12 +157,12 @@ create trigger profiles_set_updated_at
   for each row execute function public.set_updated_at();
 ```
 
-- [ ] **Step 2: Run the migration**
+- [x] **Step 2: Run the migration**
 
 Paste the whole file into the Supabase dashboard **SQL editor** and run it.
 Expected: "Success. No rows returned."
 
-- [ ] **Step 3: Verify schema + RLS objects exist**
+- [x] **Step 3: Verify schema + RLS objects exist**
 
 Run in the SQL editor:
 
@@ -162,7 +175,7 @@ select tgname from pg_trigger where tgname = 'on_auth_user_created';            
 
 Expected: `relrowsecurity = true`, 3 policies, both functions present, trigger present.
 
-- [ ] **Step 4: Commit + push**
+- [x] **Step 4: Commit + push**
 
 ```bash
 git add supabase/migrations/0001_profiles.sql
@@ -183,7 +196,7 @@ git push origin main-CleanVersion
 - Produces: `getMyProfile() → Promise<profile|null>`; `updateMyProfile(patch) → Promise<profile>` (patch keys: `display_name`, `safety_range_m`, `warning_range_m`); `isUsernameAvailable(username) → Promise<boolean>`.
 - Consumes: `supabase` from `src/services/supabase.js`; RPC `find_user_by_username` from Task 1.
 
-- [ ] **Step 1: Write `src/utils/validators.js`**
+- [x] **Step 1: Write `src/utils/validators.js`**
 
 ```js
 // Pure validators — no RN/Supabase imports so they're trivially testable.
@@ -199,7 +212,7 @@ export function validateUsername(raw) {
 }
 ```
 
-- [ ] **Step 2: Quick-check the validator with node**
+- [x] **Step 2: Quick-check the validator with node**
 
 Run:
 
@@ -217,7 +230,7 @@ ok_handle true
 ```
 (`Hanno` → `hanno` after lowercasing, so it passes the regex; `validateUsername` lowercases before testing.)
 
-- [ ] **Step 3: Write `src/services/profiles.js`**
+- [x] **Step 3: Write `src/services/profiles.js`**
 
 ```js
 import { supabase } from './supabase';
@@ -261,7 +274,7 @@ export async function isUsernameAvailable(username) {
 }
 ```
 
-- [ ] **Step 4: Verify it imports cleanly (no syntax errors)**
+- [x] **Step 4: Verify it imports cleanly (no syntax errors)**
 
 Run:
 
@@ -271,7 +284,7 @@ npx expo start -c
 
 Expected: Metro bundler starts and the QR code appears with no red bundling error mentioning `validators.js` or `profiles.js`. (Functional verification happens in Task 4, once auth exists.) Stop the bundler after confirming.
 
-- [ ] **Step 5: Commit + push**
+- [x] **Step 5: Commit + push**
 
 ```bash
 git add src/utils/validators.js src/services/profiles.js
@@ -290,7 +303,7 @@ git push origin main-CleanVersion
 - Produces: `<AuthProvider>` and `useAuth() → { session, loading, signIn(email, password), signUp({ email, password, username, displayName }) → data, signOut() }`. `signUp` returns the Supabase `data` (its `session` is `null` when email confirmation is on).
 - Consumes: `supabase` from `src/services/supabase.js`.
 
-- [ ] **Step 1: Write `src/store/AuthContext.js`**
+- [x] **Step 1: Write `src/store/AuthContext.js`**
 
 ```js
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -349,11 +362,11 @@ export function useAuth() {
 }
 ```
 
-- [ ] **Step 2: Verify it bundles**
+- [x] **Step 2: Verify it bundles**
 
 Run `npx expo start -c`; expected: no red bundling error referencing `AuthContext.js`. Stop after confirming. (Behavioural verification is Task 4.)
 
-- [ ] **Step 3: Commit + push**
+- [x] **Step 3: Commit + push**
 
 ```bash
 git add src/store/AuthContext.js
@@ -373,7 +386,7 @@ git push origin main-CleanVersion
 - Consumes: `useAuth` (Task 3), `useTheme` (`src/store/ThemeContext.js`), `validateUsername` (Task 2), `isUsernameAvailable` (Task 2), `GREEN` (`src/constants/themes.js`).
 - Produces: a working signup/login/logout loop; `App.js` renders `AuthScreen` when no session, the existing tabs when a session exists.
 
-- [ ] **Step 1: Write `src/screens/auth/AuthScreen.js`**
+- [x] **Step 1: Write `src/screens/auth/AuthScreen.js`**
 
 ```js
 import React, { useState } from 'react';
@@ -553,7 +566,7 @@ import { validateUsername } from '../../utils/validators';
 import { isUsernameAvailable as checkUsername } from '../../services/profiles';
 ```
 
-- [ ] **Step 2: Rewrite `App.js` with the gate**
+- [x] **Step 2: Rewrite `App.js` with the gate**
 
 Replace the entire contents of `App.js` with:
 
@@ -636,7 +649,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 3: Verify the full auth loop on device**
+- [x] **Step 3: Verify the full auth loop on device**
 
 Run `npx expo start -c`, open in Expo Go. Then:
 1. App opens to the **KUDORA** auth screen (no tabs visible).
@@ -645,14 +658,14 @@ Run `npx expo start -c`, open in Expo Go. Then:
 4. Try to sign up again with the **same username** (different email) → inline error **"That username is taken"**.
 5. (Logout is wired in Task 5; for now confirm the signed-in/persisted state.)
 
-- [ ] **Step 4: Verify the profile row was created (SQL editor)**
+- [x] **Step 4: Verify the profile row was created (SQL editor)**
 
 ```sql
 select id, username, display_name, safety_range_m, warning_range_m from public.profiles;
 ```
 Expected: one row for your test user, `safety_range_m = 5000`, `warning_range_m = 300`, `username` lowercased.
 
-- [ ] **Step 5: Commit + push**
+- [x] **Step 5: Commit + push**
 
 ```bash
 git add App.js src/screens/auth/AuthScreen.js
@@ -671,7 +684,7 @@ git push origin main-CleanVersion
 - Consumes: `getMyProfile`, `updateMyProfile` (Task 2); `useAuth` (session email + `signOut`); `useTheme`; `GREEN`, `RED_STOP`.
 - Produces: the finished Profile screen (no new exports).
 
-- [ ] **Step 1: Rewrite `src/screens/ProfileScreen.js`**
+- [x] **Step 1: Rewrite `src/screens/ProfileScreen.js`**
 
 ```js
 import { useState, useCallback } from 'react';
@@ -818,7 +831,7 @@ const st = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 2: Verify on device**
+- [x] **Step 2: Verify on device**
 
 Run `npx expo start -c`, open in Expo Go, go to the **Profile** tab:
 1. Shows your avatar initial, display name, `@username`, and email.
@@ -827,18 +840,18 @@ Run `npx expo start -c`, open in Expo Go, go to the **Profile** tab:
 4. Tap **Log out** → confirm → app returns to the **KUDORA** auth screen.
 5. Log back in → land on the tabs; Profile shows the same saved ranges.
 
-- [ ] **Step 3: Verify the ranges saved (SQL editor)**
+- [x] **Step 3: Verify the ranges saved (SQL editor)**
 
 ```sql
 select username, safety_range_m, warning_range_m from public.profiles;
 ```
 Expected: the values you set with the steppers (e.g. `safety_range_m = 6000`, `warning_range_m = 350`).
 
-- [ ] **Step 4: Confirm existing features still work**
+- [x] **Step 4: Confirm existing features still work**
 
 Still in Expo Go: open **Map**, press **Start Hunt**, confirm the position dot + trail render and the timer runs; **Stop**; open **Sessions** and confirm the hunt appears. Toggle the theme. Nothing regressed.
 
-- [ ] **Step 5: Commit + push**
+- [x] **Step 5: Commit + push**
 
 ```bash
 git add src/screens/ProfileScreen.js

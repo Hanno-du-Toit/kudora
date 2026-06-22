@@ -149,7 +149,7 @@ Each phase = its own SQL migration + app code, **verified with two real accounts
 devices**, then commit + push to `origin/main-CleanVersion` (per CLAUDE.md push policy).
 Security Review on phases 1, 4, 5.
 
-### Phase 1 — Auth + Profile
+### Phase 1 — Auth + Profile ✅ COMPLETE (2026-06-22)
 - `src/store/AuthContext.js` — wrap app; subscribe to `supabase.auth.onAuthStateChange`;
   expose session/loading/signOut. `App.js` gate: no session → Auth stack (Login / Signup);
   session → existing tabs (now Map / Sessions / Group / Profile).
