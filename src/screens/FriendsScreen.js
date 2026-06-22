@@ -42,6 +42,7 @@ export default function FriendsScreen() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const load = useCallback(async (mode) => {
     if (mode === 'refresh') setRefreshing(true);
@@ -77,8 +78,11 @@ export default function FriendsScreen() {
   };
 
   const onAccept = async (id) => {
+    if (actionBusy) return;
+    setActionBusy(true);
     try { await acceptRequest(id); await load(); }
     catch (e) { Alert.alert('Could not accept', friendlyFriendError(e)); }
+    finally { setActionBusy(false); }
   };
 
   const onRemove = (item) => {
@@ -92,8 +96,11 @@ export default function FriendsScreen() {
       {
         text: labels.action, style: 'destructive',
         onPress: async () => {
+          if (actionBusy) return;
+          setActionBusy(true);
           try { await removeFriendship(item.id); await load(); }
           catch (e) { Alert.alert('Could not update', friendlyFriendError(e)); }
+          finally { setActionBusy(false); }
         },
       },
     ]);
@@ -112,13 +119,13 @@ export default function FriendsScreen() {
         <Text style={[st.handle, { color: T.textDim }]}>@{item.other_username}</Text>
       </View>
       {item.status === 'pending' && item.is_incoming && (
-        <TouchableOpacity style={[st.accept, { backgroundColor: GREEN }]} onPress={() => onAccept(item.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity style={[st.accept, { backgroundColor: GREEN, opacity: actionBusy ? 0.5 : 1 }]} onPress={() => onAccept(item.id)}
+          disabled={actionBusy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={st.acceptText}>Accept</Text>
         </TouchableOpacity>
       )}
-      <TouchableOpacity onPress={() => onRemove(item)} style={st.iconBtn}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <TouchableOpacity onPress={() => onRemove(item)} style={[st.iconBtn, { opacity: actionBusy ? 0.5 : 1 }]}
+        disabled={actionBusy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons
           name={item.status === 'accepted' ? 'person-remove-outline' : 'close'}
           size={20} color={RED_STOP}
@@ -161,7 +168,7 @@ export default function FriendsScreen() {
           <Text style={[st.section, { color: T.textDim }]}>{section.title}</Text>
         )}
         renderSectionFooter={({ section }) =>
-          section.data.length === 0
+          section.key === 'friends' && section.data.length === 0
             ? <Text style={[st.empty, { color: T.textDim }]}>No friends yet — add one above.</Text>
             : null
         }
