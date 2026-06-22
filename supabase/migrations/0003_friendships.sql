@@ -63,7 +63,7 @@ as $$
   );
 $$;
 
-grant execute on function public.are_friends(uuid, uuid) to anon, authenticated;
+grant execute on function public.are_friends(uuid, uuid) to authenticated;
 
 -- ── Broaden profiles SELECT: self OR accepted friend ──────────────────────────
 -- (Phase 3 adds the shares_group_with branch.)
