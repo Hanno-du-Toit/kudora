@@ -1,4 +1,4 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FriendsScreen from './src/screens/FriendsScreen';
@@ -57,9 +57,16 @@ function ProfileStackScreen() {
 }
 
 function ThemedTabs() {
-  const { T } = useTheme();
+  const { T, isDark } = useTheme();
+  // Match the navigator background to the app theme so there's no white flash
+  // in the corners during the Profile <-> Friends slide transition.
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    colors: { ...base.colors, background: T.bg, card: T.headerBg, text: T.headerText },
+  };
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <StatusBar style={T.statusBar} />
       <Tab.Navigator
         screenOptions={({ route }) => ({
