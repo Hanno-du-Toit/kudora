@@ -1,5 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import FriendsScreen from './src/screens/FriendsScreen';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +16,24 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import AuthScreen from './src/screens/auth/AuthScreen';
 
 const Tab = createBottomTabNavigator();
+const ProfileStack = createNativeStackNavigator();
+
+function ProfileStackScreen() {
+  const { T } = useTheme();
+  return (
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: T.headerBg },
+        headerTintColor: T.headerText,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: T.bg },
+      }}
+    >
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Friends' }} />
+    </ProfileStack.Navigator>
+  );
+}
 
 function ThemedTabs() {
   const { T } = useTheme();
@@ -35,7 +55,7 @@ function ThemedTabs() {
       >
         <Tab.Screen name="Map" component={MapScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Profile" component={ProfileStackScreen} options={{ headerShown: false }} />
       </Tab.Navigator>
     </NavigationContainer>
   );

@@ -37,7 +37,7 @@ function Stepper({ label, value, unit, T, onChange }) {
   );
 }
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const { T } = useTheme();
   const { session, signOut } = useAuth();
   const insets = useSafeAreaInsets();
@@ -109,6 +109,17 @@ export default function ProfileScreen() {
           persistRange('warning_range_m', clampStep(profile?.warning_range_m ?? 300, dir, WARNING))}
       />
 
+      <TouchableOpacity
+        style={[st.linkRow, { borderColor: T.cardBorder }]}
+        onPress={() => navigation.navigate('Friends')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="people-outline" size={20} color={T.text} />
+        <Text style={[st.linkText, { color: T.text }]}>Friends</Text>
+        <View style={{ flex: 1 }} />
+        <Ionicons name="chevron-forward" size={18} color={T.textDim} />
+      </TouchableOpacity>
+
       <View style={{ flex: 1 }} />
 
       <TouchableOpacity style={[st.logout, { borderColor: T.cardBorder }]}
@@ -141,4 +152,8 @@ const st = StyleSheet.create({
     paddingHorizontal: 24, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
     alignSelf: 'stretch', justifyContent: 'center' },
   logoutText: { fontSize: 15, fontWeight: '700' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 50,
+    paddingHorizontal: 16, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch', marginTop: 12 },
+  linkText: { fontSize: 15, fontWeight: '600' },
 });
