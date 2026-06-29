@@ -19,7 +19,15 @@ create index if not exists friendships_requester_idx on public.friendships (requ
 create index if not exists friendships_addressee_idx on public.friendships (addressee_id);
 
 -- ── Mandatory CLAUDE.md table policy ─────────────────────────────────────────
-grant select, insert, update, delete on public.friendships to anon, authenticated;
+grant select, insert, delete on public.friendships to anon, authenticated;
+-- UPDATE is restricted to the status column only. A row's RLS update policy lets
+-- the addressee modify their pending row; with a full-column grant they could also
+-- rewrite requester_id/addressee_id (WITH CHECK validates only status), forging an
+-- accepted friendship with an arbitrary user and exposing that user's profile.
+-- Column-level UPDATE makes the pair columns physically unwritable. (Re-running:
+-- the revoke undoes the earlier table-wide update grant.)
+revoke update on public.friendships from anon, authenticated;
+grant update (status) on public.friendships to authenticated;
 alter table public.friendships enable row level security;
 
 -- ── RLS ───────────────────────────────────────────────────────────────────────
@@ -32,9 +40,12 @@ create policy friendships_insert on public.friendships
   for insert with check (auth.uid() = requester_id and status = 'pending');
 
 -- Accept only: addressee flips pending → accepted, cannot set any other status.
+-- WITH CHECK re-asserts addressee (it is NOT inherited from USING when present);
+-- combined with the status-only column grant above, the pair cannot be rewritten.
 drop policy if exists friendships_update on public.friendships;
 create policy friendships_update on public.friendships
-  for update using (auth.uid() = addressee_id) with check (status = 'accepted');
+  for update using (auth.uid() = addressee_id)
+  with check (auth.uid() = addressee_id and status = 'accepted');
 
 -- Either party: cancel request / decline / unfriend.
 drop policy if exists friendships_delete on public.friendships;

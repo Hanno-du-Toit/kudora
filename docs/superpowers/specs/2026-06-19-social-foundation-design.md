@@ -84,7 +84,10 @@ gotcha). Helpers are written to only *check* membership — never to bypass it.
 (`unique index on (least(requester_id,addressee_id), greatest(...))`), timestamps.
 - SELECT: `auth.uid() in (requester_id, addressee_id)`.
 - INSERT: `auth.uid() = requester_id`.
-- UPDATE: `auth.uid() = addressee_id` with `WITH CHECK (status = 'accepted')` (accept only).
+- UPDATE: `auth.uid() = addressee_id` with `WITH CHECK (auth.uid() = addressee_id AND status = 'accepted')`
+  (accept only). UPDATE privilege is granted on the **`status` column only** so the pair columns
+  cannot be rewritten (Phase 2 security review: a full-column grant let an addressee repoint
+  `requester_id` at an arbitrary user and forge an accepted friendship).
 - DELETE: either party (cancel request / decline / unfriend).
 
 **`hunt_groups`** — `id`, `name`, `owner_id`, `start_date`, `end_date`
@@ -162,10 +165,14 @@ Security Review on phases 1, 4, 5.
 - *Migration:* `profiles` + helper (`find_user_by_username`) + RLS.
 - Existing GPS/Sessions/Map untouched, now behind auth.
 
-### Phase 2 — Friends
-- `src/services/friends.js`, `src/screens/FriendsScreen.js` (reached from Profile):
-  add-by-handle, incoming/outgoing requests, accept/decline, friends list, unfriend.
-- *Migration:* `friendships` + `are_friends` + RLS.
+### Phase 2 — Friends ✅ COMPLETE (2026-06-29)
+- `src/services/friends.js`, `src/screens/FriendsScreen.js` (reached from Profile via a new
+  `ProfileStack` native-stack): add-by-handle, incoming/outgoing requests, accept/decline,
+  friends list, unfriend. `src/utils/friendErrors.js` maps service errors to friendly copy.
+- *Migration:* `friendships` + `are_friends` + `list_my_friendships` RPC + broadened `profiles`
+  SELECT (self **or** accepted friend) + RLS.
+- Security Review run (sensitive — broadens `profiles`): one RLS gap found and fixed
+  (`friendships` UPDATE narrowed to the `status` column so the pair can't be rewritten).
 
 ### Phase 3 — Hunt Groups
 - `src/services/groups.js`, `src/screens/GroupScreen.js` (the new tab) +
