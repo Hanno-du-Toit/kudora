@@ -183,8 +183,10 @@ $$;
 grant execute on function public.list_my_groups() to authenticated;
 
 -- ── RPC: full roster for one group (owner + members, incl. still-invited) ─────
--- SECURITY DEFINER so invitees/joined members see everyone's profile fields even
--- when they aren't pairwise friends. Authorized to members + the caller's own invite.
+-- SECURITY DEFINER so joined members see everyone's profile fields even when they
+-- aren't pairwise friends. Authorized to MEMBERS ONLY (owner + joined): an invited
+-- user reads the hunt name/dates/inviter via list_my_groups to decide, but cannot
+-- enumerate the roster (incl. other pending invitees) until they accept.
 create or replace function public.list_group_members(gid uuid)
 returns table (user_id uuid, username text, display_name text, status text, is_me boolean)
 language sql security definer stable set search_path = public as $$
@@ -203,8 +205,6 @@ language sql security definer stable set search_path = public as $$
     where m.group_id = gid
   ) roster
   where public.is_group_member(gid, auth.uid())
-     or exists (select 1 from public.group_members me
-                where me.group_id = gid and me.user_id = auth.uid())
   order by case roster.status when 'owner' then 0 when 'joined' then 1 else 2 end,
            roster.username;
 $$;
