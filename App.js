@@ -14,9 +14,12 @@ import MapScreen from './src/screens/MapScreen';
 import SessionsScreen from './src/screens/SessionsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AuthScreen from './src/screens/auth/AuthScreen';
+import GroupScreen from './src/screens/GroupScreen';
+import GroupDetailScreen from './src/screens/GroupDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createNativeStackNavigator();
+const GroupStack = createNativeStackNavigator();
 
 function ProfileStackScreen() {
   const { T } = useTheme();
@@ -56,6 +59,44 @@ function ProfileStackScreen() {
   );
 }
 
+function GroupStackScreen() {
+  const { T } = useTheme();
+  return (
+    <GroupStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: T.headerBg },
+        headerTintColor: T.headerText,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: T.bg },
+      }}
+    >
+      <GroupStack.Screen
+        name="GroupMain"
+        component={GroupScreen}
+        options={{ headerShown: false, title: 'Hunts' }}
+      />
+      <GroupStack.Screen
+        name="GroupDetail"
+        component={GroupDetailScreen}
+        options={({ navigation, route }) => ({
+          title: route.params?.name ?? 'Hunt',
+          headerBackVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingRight: 12 }}
+            >
+              <Ionicons name="chevron-back" size={26} color={T.headerText} />
+              <Text style={{ color: T.headerText, fontSize: 17 }}>Hunts</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+    </GroupStack.Navigator>
+  );
+}
+
 function ThemedTabs() {
   const { T, isDark } = useTheme();
   // Match the navigator background to the app theme so there's no white flash
@@ -76,13 +117,14 @@ function ThemedTabs() {
           tabBarActiveTintColor: T.tabBarActive,
           tabBarInactiveTintColor: T.tabBarInactive,
           tabBarIcon: ({ color, size }) => {
-            const icons = { Map: 'map', Sessions: 'trail-sign', Profile: 'person' };
+            const icons = { Map: 'map', Sessions: 'trail-sign', Group: 'people', Profile: 'person' };
             return <Ionicons name={icons[route.name]} size={size} color={color} />;
           },
         })}
       >
         <Tab.Screen name="Map" component={MapScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Group" component={GroupStackScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Profile" component={ProfileStackScreen} options={{ headerShown: false }} />
       </Tab.Navigator>
     </NavigationContainer>
