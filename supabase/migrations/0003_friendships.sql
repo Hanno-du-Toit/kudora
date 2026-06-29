@@ -20,12 +20,15 @@ create index if not exists friendships_addressee_idx on public.friendships (addr
 
 -- ── Mandatory CLAUDE.md table policy ─────────────────────────────────────────
 grant select, insert, delete on public.friendships to anon, authenticated;
--- UPDATE is restricted to the status column only. A row's RLS update policy lets
--- the addressee modify their pending row; with a full-column grant they could also
--- rewrite requester_id/addressee_id (WITH CHECK validates only status), forging an
--- accepted friendship with an arbitrary user and exposing that user's profile.
--- Column-level UPDATE makes the pair columns physically unwritable. (Re-running:
--- the revoke undoes the earlier table-wide update grant.)
+-- UPDATE must be limited to the status column only (the addressee flips
+-- pending→accepted). If requester_id/addressee_id were writable, the addressee
+-- could rewrite their pending row onto an arbitrary victim and forge an accepted
+-- friendship, exposing that user's profile. IMPORTANT: a plain `revoke update ...
+-- from anon, authenticated` does NOT reliably strip the TABLE-WIDE update grant
+-- that Supabase default privileges auto-apply to new public tables (its grantor
+-- differs from this role → silent no-op), so the column grant can be shadowed. The
+-- BEFORE UPDATE trigger below (friendships_status_only) is the AUTHORITATIVE guard;
+-- the revoke + column grant are kept only as defense-in-depth.
 revoke update on public.friendships from anon, authenticated;
 grant update (status) on public.friendships to authenticated;
 alter table public.friendships enable row level security;
@@ -57,6 +60,29 @@ drop trigger if exists friendships_set_updated_at on public.friendships;
 create trigger friendships_set_updated_at
   before update on public.friendships
   for each row execute function public.set_updated_at();
+
+-- ── AUTHORITATIVE column guard: only `status` may change on friendships ───────
+-- Grant-independent enforcement of status-only UPDATE (see the grants note above):
+-- rejects any rewrite of the pair columns even if a table-wide UPDATE grant
+-- survives Supabase's default privileges. The legitimate accept
+-- (status: pending→accepted) is unaffected.
+create or replace function public.enforce_friendship_status_only()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if new.id is distinct from old.id
+     or new.requester_id is distinct from old.requester_id
+     or new.addressee_id is distinct from old.addressee_id
+     or new.created_at is distinct from old.created_at then
+    raise exception 'friendships: only status may be updated (requester_id/addressee_id are immutable)';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists friendships_status_only on public.friendships;
+create trigger friendships_status_only
+  before update on public.friendships
+  for each row execute function public.enforce_friendship_status_only();
 
 -- ── Friendship helper (accepted only) ─────────────────────────────────────────
 create or replace function public.are_friends(a uuid, b uuid)

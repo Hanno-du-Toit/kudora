@@ -18,7 +18,7 @@ The owner picks `start_date` and `end_date` with **`@react-native-community/date
 - **Public repo:** no secrets, emails, or personal data committed. Only `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` via `process.env` (already in place).
 - **Every new table:** `GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO anon, authenticated;` then `ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;` (CLAUDE.md mandatory policy). Where a column-level UPDATE is tighter (see `group_members`), we narrow `UPDATE` after granting — this is stricter than the floor, not looser.
 - **RLS predicates that reference other tables run through `SECURITY DEFINER STABLE` helpers** (`is_group_owner`, `is_group_member`, `shares_group_with`) so policies never self-reference (Supabase recursion gotcha). Helpers only *check* membership, never bypass it for writes.
-- **`group_members` UPDATE is column-restricted to `status`** — the Phase 2 friendships lesson: a full-column grant + an accept-only `WITH CHECK` would let a member rewrite `group_id`/`user_id` on their own row. `revoke update` then `grant update (status)`.
+- **`group_members` UPDATE is restricted to `status` only** — the Phase 2 friendships lesson: a member must not be able to rewrite `group_id`/`user_id` on their own row. Enforced by a `BEFORE UPDATE` trigger (`group_members_status_only`) that rejects any non-`status` column change — this is the **authoritative** guard, because a plain `revoke update ... from anon, authenticated` does NOT reliably strip the table-wide UPDATE that Supabase default privileges auto-grant on new public tables (different grantor → silent no-op). The `revoke` + `grant update (status)` are kept as defense-in-depth.
 - **Group invariants (from spec):** `hunt_groups`: `end_date >= start_date` (CHECK), owner-only INSERT/UPDATE/DELETE, member-only SELECT. `group_members`: `status ∈ {invited, joined}`; **unique (group_id, user_id)**; INSERT = group **owner** only AND `are_friends(owner, user_id)` AND `status = 'invited'`; UPDATE = the invitee only, accept-only (`WITH CHECK status='joined'`); DELETE = the member themselves (leave/decline) OR the owner (remove); SELECT = group member OR your own invite row.
 - **No enumeration:** invites are sent to a `user_id` chosen from your **own accepted-friends list** (reuses `listFriendships()` from Phase 2). The user base is never scraped; `profiles` is never globally selectable.
 - **Migration numbering:** next file is `0004_hunt_groups.sql` (`0001`–`0003` already exist and have been run).
@@ -90,11 +90,15 @@ create index if not exists group_members_user_idx on public.group_members (user_
 grant select, insert, update, delete on public.hunt_groups to anon, authenticated;
 alter table public.hunt_groups enable row level security;
 
--- group_members: UPDATE restricted to the status column only (accept invite).
--- A full-column grant + accept-only WITH CHECK would let a member rewrite
--- group_id/user_id on their own row (Phase 2 friendships lesson). Column-level
--- UPDATE makes those columns physically unwritable. (Re-running: the revoke
--- undoes the earlier table-wide update grant.)
+-- group_members: only the `status` column may be UPDATEd (an invitee flips
+-- invited→joined); group_id/user_id must stay immutable or a member could rewrite
+-- their row onto another group/user and forge membership (Phase 2 friendships
+-- lesson). IMPORTANT: a plain `revoke update ... from anon, authenticated` does NOT
+-- reliably strip the TABLE-WIDE update grant that Supabase default privileges
+-- auto-apply to every new public table — that grant's grantor differs from this
+-- role, so the revoke is a silent no-op and the column grant ends up shadowed. The
+-- BEFORE UPDATE trigger further down (group_members_status_only) is therefore the
+-- AUTHORITATIVE guard; the revoke + column grant are kept only as defense-in-depth.
 grant select, insert, delete on public.group_members to anon, authenticated;
 revoke update on public.group_members from anon, authenticated;
 grant update (status) on public.group_members to authenticated;
@@ -197,6 +201,30 @@ drop trigger if exists group_members_set_updated_at on public.group_members;
 create trigger group_members_set_updated_at
   before update on public.group_members
   for each row execute function public.set_updated_at();
+
+-- ── AUTHORITATIVE column guard: only `status` may change on group_members ─────
+-- Grant-independent enforcement of status-only UPDATE (see the grants note above):
+-- rejects any rewrite of the identity/immutable columns even if a table-wide UPDATE
+-- grant survives Supabase's default privileges. The legitimate accept
+-- (status: invited→joined) is unaffected.
+create or replace function public.enforce_group_member_status_only()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if new.id is distinct from old.id
+     or new.group_id is distinct from old.group_id
+     or new.user_id is distinct from old.user_id
+     or new.invited_by is distinct from old.invited_by
+     or new.created_at is distinct from old.created_at then
+    raise exception 'group_members: only status may be updated (group_id/user_id are immutable)';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists group_members_status_only on public.group_members;
+create trigger group_members_status_only
+  before update on public.group_members
+  for each row execute function public.enforce_group_member_status_only();
 
 -- ── Final profiles SELECT: self OR accepted friend OR shares a group ──────────
 -- (Completes the spec's profiles policy; Phase 2 left a TODO for the group branch.)
@@ -1352,7 +1380,7 @@ git push origin main-CleanVersion
 Run in the **main session** (not as a build subagent) after Task 5 verifies:
 
 - [ ] **Security Review skill** over the Phase 3 diff — focus areas:
-  - **`hunt_groups` / `group_members` RLS:** can a non-member read a group or its roster? Can a non-owner invite, or invite a non-friend (RLS `are_friends` branch)? Can a member rewrite `group_id`/`user_id` (confirm the status-only column grant holds)? Can anyone but the invitee accept, or anyone but self/owner delete a membership? Can `owner_id` be transferred via UPDATE (`WITH CHECK` pins it)?
+  - **`hunt_groups` / `group_members` RLS:** can a non-member read a group or its roster? Can a non-owner invite, or invite a non-friend (RLS `are_friends` branch)? Can a member rewrite `group_id`/`user_id` (confirm the `group_members_status_only` trigger blocks it — the column grant alone is unreliable under Supabase default privileges)? Can anyone but the invitee accept, or anyone but self/owner delete a membership? Can `owner_id` be transferred via UPDATE (`WITH CHECK` pins it)?
   - **Final `profiles` SELECT:** does `shares_group_with` expose only owner/joined co-members (not merely *invited* strangers)? Confirm an invited-but-not-joined user does **not** gain profile visibility to the rest of the group.
   - **`SECURITY DEFINER` functions:** `search_path` pinned on all five, all read-only/no write-bypass, `list_my_groups` / `list_group_members` filtered to the caller (a stranger gets zero rows; `list_group_members` authorizes **members only** — owner + joined — so an invited user cannot enumerate the roster until they accept), and the roster RPC returns only `username`/`display_name` (no email/ranges).
   - No secrets/PII in source or commit messages.

@@ -31,11 +31,15 @@ create index if not exists group_members_user_idx on public.group_members (user_
 grant select, insert, update, delete on public.hunt_groups to anon, authenticated;
 alter table public.hunt_groups enable row level security;
 
--- group_members: UPDATE restricted to the status column only (accept invite).
--- A full-column grant + accept-only WITH CHECK would let a member rewrite
--- group_id/user_id on their own row (Phase 2 friendships lesson). Column-level
--- UPDATE makes those columns physically unwritable. (Re-running: the revoke
--- undoes the earlier table-wide update grant.)
+-- group_members: only the `status` column may be UPDATEd (an invitee flips
+-- invited→joined); group_id/user_id must stay immutable or a member could rewrite
+-- their row onto another group/user and forge membership (Phase 2 friendships
+-- lesson). IMPORTANT: a plain `revoke update ... from anon, authenticated` does NOT
+-- reliably strip the TABLE-WIDE update grant that Supabase default privileges
+-- auto-apply to every new public table — that grant's grantor differs from this
+-- role, so the revoke is a silent no-op and the column grant ends up shadowed. The
+-- BEFORE UPDATE trigger further down (group_members_status_only) is therefore the
+-- AUTHORITATIVE guard; the revoke + column grant are kept only as defense-in-depth.
 grant select, insert, delete on public.group_members to anon, authenticated;
 revoke update on public.group_members from anon, authenticated;
 grant update (status) on public.group_members to authenticated;
@@ -138,6 +142,30 @@ drop trigger if exists group_members_set_updated_at on public.group_members;
 create trigger group_members_set_updated_at
   before update on public.group_members
   for each row execute function public.set_updated_at();
+
+-- ── AUTHORITATIVE column guard: only `status` may change on group_members ─────
+-- Grant-independent enforcement of status-only UPDATE (see the grants note above):
+-- rejects any rewrite of the identity/immutable columns even if a table-wide UPDATE
+-- grant survives Supabase's default privileges. The legitimate accept
+-- (status: invited→joined) is unaffected.
+create or replace function public.enforce_group_member_status_only()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if new.id is distinct from old.id
+     or new.group_id is distinct from old.group_id
+     or new.user_id is distinct from old.user_id
+     or new.invited_by is distinct from old.invited_by
+     or new.created_at is distinct from old.created_at then
+    raise exception 'group_members: only status may be updated (group_id/user_id are immutable)';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists group_members_status_only on public.group_members;
+create trigger group_members_status_only
+  before update on public.group_members
+  for each row execute function public.enforce_group_member_status_only();
 
 -- ── Final profiles SELECT: self OR accepted friend OR shares a group ──────────
 -- (Completes the spec's profiles policy; Phase 2 left a TODO for the group branch.)
