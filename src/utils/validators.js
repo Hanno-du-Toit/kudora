@@ -9,3 +9,10 @@ export function validateUsername(raw) {
   if (!USERNAME_RE.test(username)) return { ok: false, error: 'Only a–z, 0–9 and _' };
   return { ok: true, value: username };
 }
+
+export function validateGroupName(raw) {
+  const name = (raw ?? '').trim();
+  if (name.length === 0) return { ok: false, error: 'Name the hunt' };
+  if (name.length > 40) return { ok: false, error: 'At most 40 characters' };
+  return { ok: true, value: name };
+}
