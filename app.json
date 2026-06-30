@@ -3,7 +3,9 @@
     "name": "kudora",
     "slug": "kudora",
     "version": "1.0.0",
-    "platforms": ["ios"],
+    "platforms": [
+      "ios"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -19,7 +21,9 @@
         "NSLocationWhenInUseUsageDescription": "Kudora uses your location to show your position on the map.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
         "NSLocationAlwaysUsageDescription": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "plugins": [
@@ -31,7 +35,8 @@
           "locationAlwaysPermission": "Kudora records your GPS trail in the background so your hunt route is captured even when the screen is off.",
           "isIosBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }
