@@ -7,10 +7,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../store/ThemeContext';
 import { GREEN, RED_STOP } from '../constants/themes';
 import { Ionicons } from '@expo/vector-icons';
-import { listGroupMembers, inviteFriend } from '../services/groups';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { listGroupMembers, inviteFriend, updateGroupEndDate } from '../services/groups';
 import { listFriendships } from '../services/friends';
 import { friendlyGroupError } from '../utils/groupErrors';
-import { parseISODate, formatDateFull } from '../utils/dates';
+import { parseISODate, formatDateFull, toISODate } from '../utils/dates';
 
 const STATUS_ORDER = { owner: 0, joined: 1, invited: 2 };
 const SECTION_TITLE = { owner: 'Owner', joined: 'Joined', invited: 'Invited' };
@@ -74,6 +75,23 @@ export default function GroupDetailScreen({ route, navigation }) {
     finally { setActionBusy(false); }
   };
 
+  const onEndDateChange = async (_e, picked) => {
+    if (!picked) return;
+    const nextISO = toISODate(picked);
+    if (nextISO === endDate) return;
+    const prevISO = endDate;
+    setEndDate(nextISO); // optimistic
+    setActionBusy(true);
+    try {
+      await updateGroupEndDate(groupId, nextISO);
+    } catch (e) {
+      setEndDate(prevISO); // revert on failure
+      Alert.alert('Could not update end date', friendlyGroupError(e));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const Header = (
     <View>
       <View style={[st.card, { borderColor: T.cardBorder }]}>
@@ -83,7 +101,16 @@ export default function GroupDetailScreen({ route, navigation }) {
         </View>
         <View style={st.dateRow}>
           <Text style={[st.dateLabel, { color: T.textDim }]}>Ends</Text>
-          <Text style={[st.dateValue, { color: T.text }]}>{formatDateFull(parseISODate(endDate))}</Text>
+          {isOwner ? (
+            <DateTimePicker
+              value={parseISODate(endDate)} mode="date" display="compact"
+              minimumDate={parseISODate(startDate)}
+              themeVariant={isDark ? 'dark' : 'light'} accentColor={GREEN}
+              onChange={onEndDateChange} disabled={actionBusy}
+            />
+          ) : (
+            <Text style={[st.dateValue, { color: T.text }]}>{formatDateFull(parseISODate(endDate))}</Text>
+          )}
         </View>
       </View>
       {isOwner && (
