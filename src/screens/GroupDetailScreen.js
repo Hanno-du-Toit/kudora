@@ -8,7 +8,7 @@ import { useTheme } from '../store/ThemeContext';
 import { GREEN, RED_STOP } from '../constants/themes';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { listGroupMembers, inviteFriend, updateGroupEndDate } from '../services/groups';
+import { listGroupMembers, inviteFriend, updateGroupEndDate, removeMember, leaveGroup, deleteGroup } from '../services/groups';
 import { listFriendships } from '../services/friends';
 import { friendlyGroupError } from '../utils/groupErrors';
 import { parseISODate, formatDateFull, toISODate } from '../utils/dates';
@@ -92,6 +92,52 @@ export default function GroupDetailScreen({ route, navigation }) {
     }
   };
 
+  const onRemove = (member) => {
+    Alert.alert('Remove member', `Remove ${member.display_name} from "${name}"?`, [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Remove', style: 'destructive',
+        onPress: async () => {
+          if (actionBusy) return;
+          setActionBusy(true);
+          try { await removeMember(groupId, member.user_id); await load(); }
+          catch (e) { Alert.alert('Could not remove', friendlyGroupError(e)); }
+          finally { setActionBusy(false); }
+        },
+      },
+    ]);
+  };
+
+  const onLeave = () => {
+    Alert.alert('Leave outing', `Leave "${name}"?`, [
+      { text: 'Stay', style: 'cancel' },
+      {
+        text: 'Leave', style: 'destructive',
+        onPress: async () => {
+          if (actionBusy) return;
+          setActionBusy(true);
+          try { await leaveGroup(groupId); navigation.goBack(); }
+          catch (e) { setActionBusy(false); Alert.alert('Could not leave', friendlyGroupError(e)); }
+        },
+      },
+    ]);
+  };
+
+  const onDelete = () => {
+    Alert.alert('Delete outing', `Delete "${name}"? This removes it for everyone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          if (actionBusy) return;
+          setActionBusy(true);
+          try { await deleteGroup(groupId); navigation.goBack(); }
+          catch (e) { setActionBusy(false); Alert.alert('Could not delete', friendlyGroupError(e)); }
+        },
+      },
+    ]);
+  };
+
   const Header = (
     <View>
       <View style={[st.card, { borderColor: T.cardBorder }]}>
@@ -165,6 +211,15 @@ export default function GroupDetailScreen({ route, navigation }) {
       {item.status === 'invited' && (
         <Text style={[st.pending, { color: T.textDim }]}>pending</Text>
       )}
+      {isOwner && item.status !== 'owner' && !item.is_me && (
+        <TouchableOpacity
+          style={[st.iconBtn, { opacity: actionBusy ? 0.5 : 1 }]}
+          onPress={() => onRemove(item)} disabled={actionBusy}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="close" size={20} color={RED_STOP} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -191,6 +246,18 @@ export default function GroupDetailScreen({ route, navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={() => load('refresh')} tintColor={GREEN} />
         }
         stickySectionHeadersEnabled={false}
+        ListFooterComponent={
+          <TouchableOpacity
+            style={[st.dangerBtn, { borderColor: RED_STOP, opacity: actionBusy ? 0.5 : 1 }]}
+            onPress={isOwner ? onDelete : onLeave} disabled={actionBusy}
+            activeOpacity={0.85}
+          >
+            <Ionicons name={isOwner ? 'trash-outline' : 'exit-outline'} size={18} color={RED_STOP} />
+            <Text style={[st.dangerText, { color: RED_STOP }]}>
+              {isOwner ? 'Delete outing' : 'Leave outing'}
+            </Text>
+          </TouchableOpacity>
+        }
       />
     </View>
   );
@@ -217,4 +284,8 @@ const st = StyleSheet.create({
   inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, marginTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth },
   inviteAdd: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  dangerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 50, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, marginTop: 28 },
+  dangerText: { fontSize: 15, fontWeight: '800' },
 });
