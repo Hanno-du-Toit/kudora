@@ -30,6 +30,7 @@ export async function listGroupMembers(groupId) {
 // Owner-only create. Dates are 'YYYY-MM-DD' strings.
 export async function createGroup({ name, startDate, endDate }) {
   const user = await requireUser();
+
   const { data, error } = await supabase
     .from('hunt_groups')
     .insert({ name, owner_id: user.id, start_date: startDate, end_date: endDate })

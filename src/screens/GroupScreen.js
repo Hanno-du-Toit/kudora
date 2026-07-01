@@ -121,9 +121,9 @@ export default function GroupScreen({ navigation }) {
 
   const Header = (
     <View style={st.createBox}>
-      <Text style={[st.createTitle, { color: T.text }]}>New hunt</Text>
+      <Text style={[st.createTitle, { color: T.text }]}>New Outing</Text>
       <TextInput
-        style={inputStyle} placeholder="Hunt name (e.g. Noord plaas)" placeholderTextColor={T.textDim}
+        style={inputStyle} placeholder="Name" placeholderTextColor={T.textDim}
         value={name} onChangeText={setName} autoCorrect={false} maxLength={40}
       />
       <View style={st.formRow}>
@@ -151,7 +151,7 @@ export default function GroupScreen({ navigation }) {
       >
         {creating
           ? <ActivityIndicator color="#06210a" />
-          : <Text style={st.createBtnText}>Create hunt</Text>}
+          : <Text style={st.createBtnText}>Create Outing</Text>}
       </TouchableOpacity>
       {error && <Text style={[st.error, { color: RED_STOP }]}>{error}</Text>}
     </View>

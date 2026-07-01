@@ -82,9 +82,19 @@ $$;
 grant execute on function public.shares_group_with(uuid, uuid) to authenticated;
 
 -- ── RLS: hunt_groups ──────────────────────────────────────────────────────────
+-- The `auth.uid() = owner_id` branch is REQUIRED (not redundant with
+-- is_group_member, which already covers owners): on INSERT ... RETURNING the WITH
+-- CHECK passes but the RETURNING re-read runs the SELECT policy, and the STABLE
+-- SECURITY DEFINER is_group_member is blind to the just-inserted row inside the
+-- same statement — so it returns false and the insert fails with 42501. Reading
+-- owner_id off the candidate row directly sees the new value and lets the create
+-- succeed. Keep both branches.
 drop policy if exists hunt_groups_select on public.hunt_groups;
 create policy hunt_groups_select on public.hunt_groups
-  for select using (public.is_group_member(id, auth.uid()));
+  for select using (
+    auth.uid() = owner_id
+    or public.is_group_member(id, auth.uid())
+  );
 
 drop policy if exists hunt_groups_insert on public.hunt_groups;
 create policy hunt_groups_insert on public.hunt_groups
