@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator, SectionList, RefreshControl,
+  View, Text, StyleSheet, ActivityIndicator, SectionList, RefreshControl, TouchableOpacity, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../store/ThemeContext';
 import { GREEN, RED_STOP } from '../constants/themes';
-import { listGroupMembers } from '../services/groups';
+import { Ionicons } from '@expo/vector-icons';
+import { listGroupMembers, inviteFriend } from '../services/groups';
+import { listFriendships } from '../services/friends';
 import { friendlyGroupError } from '../utils/groupErrors';
 import { parseISODate, formatDateFull } from '../utils/dates';
 
@@ -35,22 +37,42 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [friendships, setFriendships] = useState([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const load = useCallback(async (mode) => {
     if (mode === 'refresh') setRefreshing(true);
     setLoadError(null);
     try {
-      const members = await listGroupMembers(groupId);
+      const [members, friends] = await Promise.all([
+        listGroupMembers(groupId),
+        isOwner ? listFriendships() : Promise.resolve([]),
+      ]);
       setRoster(members);
+      setFriendships(friends);
     } catch (e) {
       setLoadError(friendlyGroupError(e));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [groupId]);
+  }, [groupId, isOwner]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Accepted friends who are not already in the roster (owner/joined/invited).
+  const rosterIds = new Set(roster.map((m) => m.user_id));
+  const eligibleFriends = friendships.filter(
+    (f) => f.status === 'accepted' && !rosterIds.has(f.other_id),
+  );
+
+  const onInvite = async (friendId) => {
+    if (actionBusy) return;
+    setActionBusy(true);
+    try { await inviteFriend(groupId, friendId); await load(); }
+    catch (e) { Alert.alert('Could not invite', friendlyGroupError(e)); }
+    finally { setActionBusy(false); }
+  };
 
   const Header = (
     <View>
@@ -64,6 +86,42 @@ export default function GroupDetailScreen({ route, navigation }) {
           <Text style={[st.dateValue, { color: T.text }]}>{formatDateFull(parseISODate(endDate))}</Text>
         </View>
       </View>
+      {isOwner && (
+        <View style={[st.card, { borderColor: T.cardBorder }]}>
+          <TouchableOpacity
+            style={st.inviteToggle} activeOpacity={0.7}
+            onPress={() => setInviteOpen((o) => !o)}
+          >
+            <Ionicons name={inviteOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={T.textDim} />
+            <Text style={[st.inviteTitle, { color: T.text }]}>Invite a friend</Text>
+          </TouchableOpacity>
+          {inviteOpen && (
+            eligibleFriends.length === 0 ? (
+              <Text style={[st.inviteEmpty, { color: T.textDim }]}>
+                {friendships.some((f) => f.status === 'accepted')
+                  ? 'All your friends are already in this outing.'
+                  : 'Add friends on the Friends tab first.'}
+              </Text>
+            ) : (
+              eligibleFriends.map((f) => (
+                <View key={f.other_id} style={[st.inviteRow, { borderColor: T.cardBorder }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[st.name, { color: T.text }]}>{f.other_display_name}</Text>
+                    <Text style={[st.handle, { color: T.textDim }]}>@{f.other_username}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[st.inviteAdd, { backgroundColor: GREEN, opacity: actionBusy ? 0.5 : 1 }]}
+                    onPress={() => onInvite(f.other_id)} disabled={actionBusy}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="add" size={20} color="#06210a" />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )
+          )}
+        </View>
+      )}
       {loadError && <Text style={[st.error, { color: RED_STOP }]}>{loadError}</Text>}
     </View>
   );
@@ -125,4 +183,10 @@ const st = StyleSheet.create({
   name: { fontSize: 16, fontWeight: '700' },
   handle: { fontSize: 13, marginTop: 1 },
   pending: { fontSize: 13, fontStyle: 'italic' },
+  inviteToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inviteTitle: { fontSize: 15, fontWeight: '700' },
+  inviteEmpty: { fontSize: 13, marginTop: 10 },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, marginTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth },
+  inviteAdd: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });
