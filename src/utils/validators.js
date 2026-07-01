@@ -12,7 +12,7 @@ export function validateUsername(raw) {
 
 export function validateGroupName(raw) {
   const name = (raw ?? '').trim();
-  if (name.length === 0) return { ok: false, error: 'Name the hunt' };
+  if (name.length === 0) return { ok: false, error: 'Name the outing' };
   if (name.length > 40) return { ok: false, error: 'At most 40 characters' };
   return { ok: true, value: name };
 }

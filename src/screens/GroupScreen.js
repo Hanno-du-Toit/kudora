@@ -35,7 +35,8 @@ export default function GroupScreen({ navigation }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
 
   // create-hunt form
@@ -58,7 +59,7 @@ export default function GroupScreen({ navigation }) {
       const data = await listMyGroups();
       setRows(data);
     } catch (e) {
-      setError(friendlyGroupError(e));
+      setLoadError(friendlyGroupError(e));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,9 +69,9 @@ export default function GroupScreen({ navigation }) {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onCreate = async () => {
-    setError(null);
+    setFormError(null);
     const v = validateGroupName(name);
-    if (!v.ok) return setError(v.error);
+    if (!v.ok) return setFormError(v.error);
     setCreating(true);
     try {
       await createGroup({
@@ -83,7 +84,7 @@ export default function GroupScreen({ navigation }) {
       setEndDate(addDays(new Date(), 1));
       await load();
     } catch (e) {
-      setError(friendlyGroupError(e));
+      setFormError(friendlyGroupError(e));
     } finally {
       setCreating(false);
     }
@@ -153,7 +154,7 @@ export default function GroupScreen({ navigation }) {
           ? <ActivityIndicator color="#06210a" />
           : <Text style={st.createBtnText}>Create Outing</Text>}
       </TouchableOpacity>
-      {error && <Text style={[st.error, { color: RED_STOP }]}>{error}</Text>}
+      {formError && <Text style={[st.error, { color: RED_STOP }]}>{formError}</Text>}
     </View>
   );
 
@@ -213,7 +214,12 @@ export default function GroupScreen({ navigation }) {
         sections={toSections(rows)}
         keyExtractor={(item) => item.group_id}
         renderItem={renderItem}
-        ListHeaderComponent={Header}
+        ListHeaderComponent={
+          <View>
+            {Header}
+            {loadError && <Text style={[st.error, { color: RED_STOP }]}>{loadError}</Text>}
+          </View>
+        }
         renderSectionHeader={({ section }) => (
           <Text style={[st.section, { color: T.textDim }]}>{section.title}</Text>
         )}
