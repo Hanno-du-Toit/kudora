@@ -91,6 +91,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           <TouchableOpacity
             style={st.inviteToggle} activeOpacity={0.7}
             onPress={() => setInviteOpen((o) => !o)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Ionicons name={inviteOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={T.textDim} />
             <Text style={[st.inviteTitle, { color: T.text }]}>Invite a friend</Text>
