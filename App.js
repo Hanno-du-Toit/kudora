@@ -73,13 +73,13 @@ function GroupStackScreen() {
       <GroupStack.Screen
         name="GroupMain"
         component={GroupScreen}
-        options={{ headerShown: false, title: 'Hunts' }}
+        options={{ headerShown: false, title: 'Outings' }}
       />
       <GroupStack.Screen
         name="GroupDetail"
         component={GroupDetailScreen}
         options={({ navigation, route }) => ({
-          title: route.params?.name ?? 'Hunt',
+          title: route.params?.name ?? 'Outing',
           headerBackVisible: false,
           headerLeft: () => (
             <TouchableOpacity
@@ -88,7 +88,7 @@ function GroupStackScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingRight: 12 }}
             >
               <Ionicons name="chevron-back" size={26} color={T.headerText} />
-              <Text style={{ color: T.headerText, fontSize: 17 }}>Hunts</Text>
+              <Text style={{ color: T.headerText, fontSize: 17 }}>Outings</Text>
             </TouchableOpacity>
           ),
         })}

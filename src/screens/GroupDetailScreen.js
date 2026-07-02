@@ -28,7 +28,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const { T, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const { groupId, name, ownerId, myStatus, startDate } = route.params ?? {};
+  const { groupId, name, myStatus, startDate } = route.params ?? {};
   const isOwner = myStatus === 'owner';
 
   const [roster, setRoster] = useState([]);

@@ -157,7 +157,8 @@ Security Review on phases 1, 4, 5.
   expose session/loading/signOut. `App.js` gate: no session → Auth stack (Login / Signup);
   session → existing tabs (now Map / Sessions / Group / Profile).
 - `src/screens/auth/LoginScreen.js`, `SignupScreen.js` — email/password; signup also takes
-  display name + unique handle (availability via `find_user_by_username`), then inserts the
+  display name + unique handle (availability via `username_available` since 0005;
+  `find_user_by_username` is authenticated-only), then inserts the
   `profiles` row. Loading states + friendly errors ("No signal, try again").
 - `src/services/profiles.js` — get/update own profile, handle lookup.
 - Build out `src/screens/ProfileScreen.js` — display name, `@handle`, email, the two range
@@ -174,7 +175,7 @@ Security Review on phases 1, 4, 5.
 - Security Review run (sensitive — broadens `profiles`): one RLS gap found and fixed
   (`friendships` UPDATE narrowed to the `status` column so the pair can't be rewritten).
 
-### Phase 3 — Hunt Groups
+### Phase 3 — Hunt Groups ✅ COMPLETE (2026-07-02)
 - `src/services/groups.js`, `src/screens/GroupScreen.js` (the new tab) +
   `GroupDetailScreen.js`: create group (name + start/end date), extend end date, invite
   friends only, accept/decline invite, member list, leave/remove.

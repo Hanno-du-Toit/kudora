@@ -1,5 +1,16 @@
 # Phase 3 — Hunt Groups Implementation Plan
 
+> **Status: ✅ COMPLETE (2026-07-02).** All 5 tasks built and device-verified on two
+> accounts (create / invite / accept / decline / roster / end-date edit / leave /
+> remove / delete). Completion review done: phase Security Review PASS; final
+> whole-phase code review "Ready to merge: Yes". Status-only trigger forge test run
+> in the Supabase SQL editor — all rows PASS (both triggers block group_id/user_id/
+> pair rewrites; legit status flips allowed). Close-out: `0005` migration revokes
+> `find_user_by_username` from anon (Phase 1 oracle) and adds boolean-only
+> `username_available` so the pre-auth signup check keeps working; "outing" copy
+> sweep; known decision recorded in CLAUDE.md (pending invite survives un-friending
+> — accepted at family scale).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a user create a multi-day hunt group, invite **accepted friends only**, accept/decline invites, see the member roster, and leave/remove/delete — a confirmed group-membership graph that Phase 4 (path sharing) and Phase 5 (live position) build on ("only members see each other's trails/positions").

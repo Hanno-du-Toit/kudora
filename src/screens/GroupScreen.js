@@ -14,13 +14,13 @@ import { toISODate, addDays, parseISODate, formatDateShort } from '../utils/date
 import { listMyGroups, createGroup, acceptInvite, leaveGroup } from '../services/groups';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-// Split the flat RPC rows into invitations vs. my active hunts.
+// Split the flat RPC rows into invitations vs. my active outings.
 function toSections(rows) {
   const invites = rows.filter((r) => r.my_status === 'invited');
   const mine = rows.filter((r) => r.my_status === 'owner' || r.my_status === 'joined');
   const sections = [];
   if (invites.length) sections.push({ key: 'invites', title: 'Invitations', data: invites });
-  sections.push({ key: 'mine', title: 'Your hunts', data: mine });
+  sections.push({ key: 'mine', title: 'Your outings', data: mine });
   return sections;
 }
 
@@ -39,7 +39,7 @@ export default function GroupScreen({ navigation }) {
   const [loadError, setLoadError] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
 
-  // create-hunt form
+  // create-outing form
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(() => new Date());
   const [endDate, setEndDate] = useState(() => addDays(new Date(), 1));
@@ -145,7 +145,7 @@ export default function GroupScreen({ navigation }) {
         />
       </View>
       <Text style={[st.rangePreview, { color: T.textDim }]}>
-        {dateRangeLabel(toISODate(startDate), toISODate(endDate))}
+        {`${formatDateShort(startDate)} – ${formatDateShort(endDate)}`}
       </Text>
       <TouchableOpacity
         style={[st.createBtn, { backgroundColor: GREEN, opacity: creating ? 0.6 : 1 }]}
@@ -167,7 +167,7 @@ export default function GroupScreen({ navigation }) {
         activeOpacity={isInvite ? 1 : 0.7}
         disabled={isInvite}
         onPress={() => navigation.navigate('GroupDetail', {
-          groupId: item.group_id, name: item.name, ownerId: item.owner_id, myStatus: item.my_status,
+          groupId: item.group_id, name: item.name, myStatus: item.my_status,
           startDate: item.start_date, endDate: item.end_date,
         })}
       >
@@ -226,7 +226,7 @@ export default function GroupScreen({ navigation }) {
         )}
         renderSectionFooter={({ section }) =>
           section.key === 'mine' && section.data.length === 0
-            ? <Text style={[st.empty, { color: T.textDim }]}>No hunts yet — create one above.</Text>
+            ? <Text style={[st.empty, { color: T.textDim }]}>No outings yet — create one above.</Text>
             : null
         }
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}

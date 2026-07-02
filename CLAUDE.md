@@ -301,6 +301,12 @@ each lives in the relevant section; this is the grouped index.
   the GPS watchers in useGPSTracking and the render layers (PositionDot, TrailLayer)
   apply this guard.
 
+- DECISION (Phase 3): a pending group invite survives un-friending — `are_friends` is
+  checked at INSERT (invite) time only, so if the owner un-friends an invitee before they
+  respond, the invitee can still accept and join. Deliberately accepted at family scale
+  (owner can remove the member or delete the outing); revisit only if the app ever opens
+  to non-family users.
+
 ## Build and Deployment
 
 - Development: `npx expo start` → scan QR with Expo Go on iPhone
