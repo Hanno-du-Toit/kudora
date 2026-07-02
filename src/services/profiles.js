@@ -31,11 +31,12 @@ export async function updateMyProfile(patch) {
   return data;
 }
 
-// Exact-match availability via the SECURITY DEFINER RPC (returns [] when free).
+// Boolean-only availability RPC — anon-callable so the pre-auth signup form
+// works (find_user_by_username is authenticated-only since 0005).
 export async function isUsernameAvailable(username) {
-  const { data, error } = await supabase.rpc('find_user_by_username', {
+  const { data, error } = await supabase.rpc('username_available', {
     handle: username,
   });
   if (error) throw error;
-  return !data || data.length === 0;
+  return data === true;
 }
