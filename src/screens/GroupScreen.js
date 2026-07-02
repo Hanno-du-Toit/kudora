@@ -55,6 +55,7 @@ export default function GroupScreen({ navigation }) {
 
   const load = useCallback(async (mode) => {
     if (mode === 'refresh') setRefreshing(true);
+    setLoadError(null);
     try {
       const data = await listMyGroups();
       setRows(data);
