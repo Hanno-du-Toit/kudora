@@ -18,6 +18,9 @@ import { GREEN, RED_STOP } from '../constants/themes';
 import { formatElapsed } from '../utils/geoUtils';
 import { loadAllHunts, deleteHunt as deleteHuntFromStorage } from '../services/huntStorage';
 import { regionForPoints, samplePoints } from '../utils/mapUtils';
+import { getDesired, removeHunt } from '../store/shareState';
+import { reconcileShares } from '../services/trailSync';
+import ShareSheet from '../components/sessions/ShareSheet';
 
 const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -126,11 +129,18 @@ const HuntCard = React.memo(function HuntCard({ hunt, onPress, T, isDark }) {
 
 function HuntDetailView({ hunt, onBack, onDeleted, T, isDark, insets }) {
   const [confirming, setConfirming] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    const desired = await getDesired();
+    const n = Object.keys(desired[hunt.id] ?? {}).length;
+    const message =
+      n > 0
+        ? `Remove this hunt from ${formatDate(hunt.startedAt)}? It is shared to ${n} outing${n === 1 ? '' : 's'} — deleting also removes it there. This cannot be undone.`
+        : `Remove this hunt from ${formatDate(hunt.startedAt)}? This cannot be undone.`;
     Alert.alert(
       'Delete Hunt',
-      `Remove this hunt from ${formatDate(hunt.startedAt)}? This cannot be undone.`,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -139,6 +149,8 @@ function HuntDetailView({ hunt, onBack, onDeleted, T, isDark, insets }) {
           onPress: async () => {
             setConfirming(true);
             await deleteHuntFromStorage(hunt.id);
+            await removeHunt(hunt.id);
+            reconcileShares();
             onDeleted(hunt.id);
           },
         },
@@ -210,6 +222,14 @@ function HuntDetailView({ hunt, onBack, onDeleted, T, isDark, insets }) {
 
         <TouchableOpacity
           style={[st.floatBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}
+          onPress={() => setShareOpen(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="share-outline" size={16} color={T.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[st.floatBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}
           onPress={handleDelete}
           disabled={confirming}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -266,6 +286,15 @@ function HuntDetailView({ hunt, onBack, onDeleted, T, isDark, insets }) {
           </DetailStat>
         </View>
       </View>
+
+      <ShareSheet
+        hunt={hunt}
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        T={T}
+        isDark={isDark}
+        insets={insets}
+      />
     </View>
   );
 }

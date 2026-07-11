@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeProvider, useTheme } from './src/store/ThemeContext';
 import { AuthProvider, useAuth } from './src/store/AuthContext';
+import { useShareSync } from './src/hooks/useShareSync';
 import { GREEN } from './src/constants/themes';
 import MapScreen from './src/screens/MapScreen';
 import SessionsScreen from './src/screens/SessionsScreen';
@@ -99,6 +100,7 @@ function GroupStackScreen() {
 
 function ThemedTabs() {
   const { T, isDark } = useTheme();
+  useShareSync();
   // Match the navigator background to the app theme so there's no white flash
   // in the corners during the Profile <-> Friends slide transition.
   const base = isDark ? DarkTheme : DefaultTheme;
