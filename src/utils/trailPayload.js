@@ -14,6 +14,24 @@ export function buildTrailPayload(hunt, groupId, ownerId) {
     if (p.timestamp != null) out.timestamp = p.timestamp;
     return out;
   });
+  // Shared trails must end where the hunt really ended; samplePoints alone
+  // doesn't guarantee the true last point survives sampling. Ensure it does,
+  // replacing the final sampled point when at the cap so length stays ≤ max.
+  const lastValid = valid[valid.length - 1];
+  const last = { latitude: lastValid.latitude, longitude: lastValid.longitude };
+  if (lastValid.timestamp != null) last.timestamp = lastValid.timestamp;
+  const tail = pts[pts.length - 1];
+  if (
+    tail.latitude !== last.latitude ||
+    tail.longitude !== last.longitude ||
+    tail.timestamp !== last.timestamp
+  ) {
+    if (pts.length >= MAX_SHARED_TRAIL_POINTS) {
+      pts[pts.length - 1] = last;
+    } else {
+      pts.push(last);
+    }
+  }
   return {
     owner_id: ownerId,
     group_id: groupId,
