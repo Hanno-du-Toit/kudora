@@ -166,6 +166,16 @@ export default function GroupDetailScreen({ route, navigation }) {
           )}
         </View>
       </View>
+      <TouchableOpacity
+        style={[st.card, st.mapRow, { borderColor: T.cardBorder }]}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('GroupMap', { groupId, name })}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      >
+        <Ionicons name="map-outline" size={18} color={T.textDim} />
+        <Text style={[st.mapRowTitle, { color: T.text }]}>Group map</Text>
+        <Ionicons name="chevron-forward" size={18} color={T.textDim} />
+      </TouchableOpacity>
       {isOwner && (
         <View style={[st.card, { borderColor: T.cardBorder }]}>
           <TouchableOpacity
@@ -274,6 +284,8 @@ const st = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, marginBottom: 6 },
+  mapRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  mapRowTitle: { flex: 1, fontSize: 15, fontWeight: '700' },
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
   dateLabel: { fontSize: 14, fontWeight: '600' },
   dateValue: { fontSize: 15, fontWeight: '700' },

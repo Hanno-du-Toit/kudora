@@ -559,9 +559,9 @@ git push origin main-CleanVersion
 - Consumes: `reconcileShares`, `onShareSync` (Task 3); `getDesired`, `setDesired`, `removeHunt`, `getServerCache` (Task 3); `listMyGroups` (`src/services/groups.js`); `friendlyGroupError` (`src/utils/groupErrors.js`).
 - Produces: `useShareSync()` (mount-once hook); `<ShareSheet hunt visible onClose T isDark insets />`.
 
-- [ ] **Step 1: Install netinfo** — `npx expo install @react-native-community/netinfo` (bundled in Expo Go; expo pins the SDK-54 version). Commit `package.json` + lockfile.
+- [x] **Step 1: Install netinfo** — `npx expo install @react-native-community/netinfo` (bundled in Expo Go; expo pins the SDK-54 version). Commit `package.json` + lockfile.
 
-- [ ] **Step 2: Create `src/hooks/useShareSync.js`**
+- [x] **Step 2: Create `src/hooks/useShareSync.js`**
 
 ```js
 import { useEffect } from 'react';
@@ -588,7 +588,7 @@ export function useShareSync() {
 
 In `App.js` `ThemedTabs`, add `useShareSync();` beside the existing `useTheme()` call (and the import).
 
-- [ ] **Step 3: Create `src/components/sessions/ShareSheet.js`**
+- [x] **Step 3: Create `src/components/sessions/ShareSheet.js`**
 
 A bottom card (same visual language as `HuntDetailView`'s stats panel: `T.card` background, hairline border, `insets.bottom` padding) shown when `visible`. Behavior:
 
@@ -610,16 +610,16 @@ export function shareStatus(desired, cached) {
 - No outings: "You're not in any outings yet — create one on the Group tab."
 - A `revoked > 0` sync summary shows one inline caption: "Removed from an outing — that share was cancelled."
 
-- [ ] **Step 4: Wire into `HuntDetailView` (`SessionsScreen.js`)**
+- [x] **Step 4: Wire into `HuntDetailView` (`SessionsScreen.js`)**
 
 - Top bar gains a middle share button (same `floatBtn` style, `share-outline` icon, ≥44pt) → `setShareOpen(true)`; render `<ShareSheet hunt={hunt} visible={shareOpen} onClose={() => setShareOpen(false)} T={T} isDark={isDark} insets={insets} />` above the stats panel.
 - `handleDelete`: first `const desired = await getDesired();` — if `desired[hunt.id]` has entries, the Alert message becomes `` `Remove this hunt from ${formatDate(hunt.startedAt)}? It is shared to ${n} outing${n===1?'':'s'} — deleting also removes it there. This cannot be undone.` ``; on confirm, after `deleteHuntFromStorage(hunt.id)` also `await removeHunt(hunt.id); reconcileShares();`.
 
-- [ ] **Step 5: `node --check`** on all four touched JS files; then run `npx expo start` and confirm the app boots with no red screen.
+- [x] **Step 5: `node --check`** on all four touched JS files; then run `npx expo start` and confirm the app boots with no red screen.
 
-- [ ] **Step 6: DEVICE CHECKPOINT (STOP for user)** — online, @hunter: open a hunt → share button visible; sheet lists outings; toggle ON → status settles to "Shared"; Supabase table editor shows one `shared_trails` row (points ≤1000); toggle OFF → row gone; re-share → exactly one row (idempotent); delete a shared hunt → warning copy mentions the outing count, server row disappears.
+- [x] **Step 6: DEVICE CHECKPOINT (STOP for user)** — online, @hunter: open a hunt → share button visible; sheet lists outings; toggle ON → status settles to "Shared"; Supabase table editor shows one `shared_trails` row (points ≤1000); toggle OFF → row gone; re-share → exactly one row (idempotent); delete a shared hunt → warning copy mentions the outing count, server row disappears. PASSED 2026-07-21 (7/7, plus bonus unshareable-hunt check on a ~1-point hunt).
 
-- [ ] **Step 7: Commit + push**
+- [x] **Step 7: Commit + push**
 
 ```bash
 git add package.json package-lock.json src/hooks/useShareSync.js src/components/sessions/ShareSheet.js src/screens/SessionsScreen.js App.js

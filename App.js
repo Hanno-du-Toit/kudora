@@ -17,6 +17,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import GroupScreen from './src/screens/GroupScreen';
 import GroupDetailScreen from './src/screens/GroupDetailScreen';
+import GroupMapScreen from './src/screens/GroupMapScreen';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createNativeStackNavigator();
@@ -90,6 +91,23 @@ function GroupStackScreen() {
             >
               <Ionicons name="chevron-back" size={26} color={T.headerText} />
               <Text style={{ color: T.headerText, fontSize: 17 }}>Outings</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <GroupStack.Screen
+        name="GroupMap"
+        component={GroupMapScreen}
+        options={({ navigation, route }) => ({
+          title: route.params?.name ?? 'Group map',
+          headerBackVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingRight: 12 }}
+            >
+              <Ionicons name="chevron-back" size={26} color={T.headerText} />
             </TouchableOpacity>
           ),
         })}
