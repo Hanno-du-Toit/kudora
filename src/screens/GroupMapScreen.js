@@ -11,6 +11,7 @@ import { useGroupTrails } from '../hooks/useGroupTrails';
 import { listGroupMembers } from '../services/groups';
 import { friendlyGroupError } from '../utils/groupErrors';
 import { colorForMember } from '../utils/memberColors';
+import { reconcileShares } from '../services/trailSync';
 import { regionForPoints } from '../utils/mapUtils';
 import { isValidCoord } from '../utils/geoUtils';
 import { supabase } from '../services/supabase';
@@ -46,7 +47,8 @@ export default function GroupMapScreen({ route }) {
 
   useFocusEffect(useCallback(() => { loadMembers(); }, [loadMembers]));
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
+    await reconcileShares();
     refresh();
     loadMembers();
   }, [refresh, loadMembers]);
@@ -70,7 +72,7 @@ export default function GroupMapScreen({ route }) {
     return {
       id,
       color: colorForMember(id, myId, memberIds),
-      name: member?.display_name ?? (id === myId ? 'You' : 'Member'),
+      name: member?.username ? `@${member.username}` : (id === myId ? 'You' : 'Member'),
     };
   });
 
