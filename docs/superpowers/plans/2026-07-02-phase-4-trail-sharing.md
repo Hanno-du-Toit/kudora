@@ -680,9 +680,9 @@ Full-screen MapView mirroring `HuntDetailView`'s map config (satellite base, the
 
 - [ ] **Step 5: `node --check`** all touched files; boot check via `npx expo start`.
 
-- [ ] **Step 6: DEVICE CHECKPOINT (STOP for user)** — two accounts: @hunter shares a hunt to the outing → @test opens Group map: trail renders in @test's view with @hunter's assigned colour (amber/blue, NOT green); @test shares one → @hunter sees own trail green + @test's in a palette colour; legend names/colours match; @hunter unshares → gone from @test's map after refresh; own solo-hunt map flows unaffected.
+- [x] **Step 6: DEVICE CHECKPOINT (STOP for user)** — two accounts: @hunter shares a hunt to the outing → @test opens Group map: trail renders in @test's view with @hunter's assigned colour (amber/blue, NOT green); @test shares one → @hunter sees own trail green + @test's in a palette colour; legend names/colours match; @hunter unshares → gone from @test's map after refresh; own solo-hunt map flows unaffected. COMPLETE 2026-07-25 after cache clear; see progress.md for the 2 follow-up fixes (refresh reconcile + @username legend).
 
-- [ ] **Step 7: Commit + push**
+- [x] **Step 7: Commit + push**
 
 ```bash
 git add src/components/map/TrailLayer.js src/hooks/useGroupTrails.js src/screens/GroupMapScreen.js src/screens/GroupDetailScreen.js App.js
