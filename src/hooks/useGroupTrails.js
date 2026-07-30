@@ -9,6 +9,7 @@ export function useGroupTrails(groupId) {
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try { setTrails(await listGroupTrails(groupId)); }
     catch (e) { setError(friendlyGroupError(e)); }

@@ -1,4 +1,4 @@
-import { getDesired, setDesired, getServerCache, setServerCache } from '../store/shareState';
+import { getDesired, setDesired, setServerCache } from '../store/shareState';
 import { listMyShareRefs, insertSharedTrail, deleteSharedTrail } from './sharedTrails';
 import { loadHunt } from './huntStorage';
 import { buildTrailPayload } from '../utils/trailPayload';
