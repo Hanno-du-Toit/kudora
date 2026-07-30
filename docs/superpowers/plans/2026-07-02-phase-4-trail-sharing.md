@@ -696,14 +696,14 @@ git push origin main-CleanVersion
 
 **DEVICE CHECKPOINT (STOP for user), all on @hunter unless noted:**
 
-- [ ] 1. Airplane mode ON → share a hunt → toggle flips instantly, status "Waiting for signal"; close/reopen sheet — state persists.
-- [ ] 2. Still offline: kill + relaunch the app → sheet still shows "Waiting for signal" (desired state survived).
-- [ ] 3. Airplane mode OFF → within a few seconds (netinfo trigger) status settles to "Shared"; @test sees the trail.
-- [ ] 4. Airplane mode ON → share a second hunt, then unshare it, both offline → airplane OFF → **no row ever appears** in `shared_trails` for that hunt (net no-op — spec Decision 2's acceptance test).
-- [ ] 5. Airplane mode ON → unshare the Task-4 trail → "Removing…" → airplane OFF → row deleted, @test's map clears.
-- [ ] 6. @test leaves the outing (or @hunter removes them) → @test's previously shared rows vanish for remaining members (cleanup trigger, visible in table editor); @test's own sheet settles the flag off via the revoked path on next sync.
-- [ ] 7. Regression: record a hunt start-to-finish, Sessions list/detail, theme + TOPO/SAT toggles, Friends + outing flows — all unchanged.
-- [ ] Fix anything that fails (systematic-debugging), commit + push fixes, re-run the failed step.
+- [x] 1. Airplane mode ON → share a hunt → toggle flips instantly, status "Waiting for signal"; close/reopen sheet — state persists. PASS 2026-07-30.
+- [x] 2. Still offline: kill + relaunch the app → sheet still shows "Waiting for signal" (desired state survived). SKIPPED 2026-07-30 — Expo Go cannot cold-launch offline (bundle download needs network); not a code issue, re-verify in a standalone (EAS) build.
+- [x] 3. Airplane mode OFF → within a few seconds (netinfo trigger) status settles to "Shared"; @test sees the trail. PASS 2026-07-30 (row confirmed in table editor).
+- [x] 4. Airplane mode ON → share a second hunt, then unshare it, both offline → airplane OFF → **no row ever appears** in `shared_trails` for that hunt (net no-op — spec Decision 2's acceptance test). PASS 2026-07-30.
+- [x] 5. Airplane mode ON → unshare the Task-4 trail → "Removing…" → airplane OFF → row deleted, @test's map clears. PASS 2026-07-30.
+- [x] 6. @test leaves the outing (or @hunter removes them) → @test's previously shared rows vanish for remaining members (cleanup trigger, visible in table editor); @test's own sheet settles the flag off via the revoked path on next sync. PASS 2026-07-30 (@test removed from outing, zero @test rows remain in shared_trails; trigger behaviour matches RLS-test check 8).
+- [x] 7. Regression: record a hunt start-to-finish, Sessions list/detail, theme + TOPO/SAT toggles, Friends + outing flows — all unchanged. PASS 2026-07-30.
+- [x] Fix anything that fails (systematic-debugging), commit + push fixes, re-run the failed step. — Nothing failed; no fixes needed.
 
 ---
 
