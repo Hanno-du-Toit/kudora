@@ -181,11 +181,13 @@ Security Review on phases 1, 4, 5.
   friends only, accept/decline invite, member list, leave/remove.
 - *Migration:* `hunt_groups`, `group_members`, `is_group_member`, `shares_group_with` + RLS.
 
-### Phase 4 — Per-path sharing + offline sync
+### Phase 4 — Per-path sharing + offline sync ✅ COMPLETE (2026-07-30)
 - Extend the local Hunt with optional sync metadata; add a **"Share to group"** action in
   `SessionsScreen` (pick a group) → upload to `shared_trails`; unshare deletes the server copy.
 - `src/store/syncQueue.js` — offline-first queue: record the share intent locally, flush when
-  online (offline-first is non-negotiable).
+  online (offline-first is non-negotiable). *(As built: superseded by a desired-state
+  reconciler — `src/store/shareState.js` + `src/services/trailSync.js`, per the Phase 4
+  spec's Decision 2 — which nets offline share-then-unshare to a no-op.)*
 - `src/hooks/useGroupTrails.js` — load a group's shared trails; `src/components/map/TrailLayer`
   reused to render each member's trail in their colour (green/amber/blue) on the Group map;
   a small `colorForMember` util.

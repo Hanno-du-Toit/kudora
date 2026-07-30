@@ -1,6 +1,8 @@
 # Phase 4 — Per-Path Trail Sharing + Offline Sync Implementation Plan
 
-> **Status: APPROVED (2026-07-03).** Spec
+> **Status: ✅ COMPLETE (2026-07-30).** All 7 tasks done and device-verified; Security
+> Review PASS (no Critical/Important); final code-review fixes landed (698737b, c5022ea —
+> map centring pending device confirmation). Originally APPROVED 2026-07-03. Spec
 > (`docs/superpowers/specs/2026-07-02-phase-4-trail-sharing-design.md`) approved with all
 > 5 open questions resolved at their recommendations: (1) dedicated GroupMapScreen,
 > (2) local delete = unshare, (3) leave/remove wipes shares via DB trigger, (4) 1000-point
@@ -709,9 +711,9 @@ git push origin main-CleanVersion
 
 ## Task 7: Completion — Security Review + final code review + close-out
 
-- [ ] 1. **Security Review skill** over the whole phase (GPS coordinates now in DB — flagged phase): re-verify RLS answers from Task 1's script against final code; check no coordinates/tokens logged; confirm unshared hunts have no upload path; confirm reconciler can't be tricked into sharing to a foreign group (RLS is the backstop).
-- [ ] 2. **/code-review** (Code Reviewer pass) over the phase diff; triage findings — fix Critical/Important, ledger the rest.
-- [ ] 3. Close-out: mark Phase 4 ✅ COMPLETE in this plan's header + the foundation spec's Phase 4 line; update `.superpowers/sdd/progress.md`; final commit + push.
+- [x] 1. **Security Review skill** over the whole phase (GPS coordinates now in DB — flagged phase): re-verify RLS answers from Task 1's script against final code; check no coordinates/tokens logged; confirm unshared hunts have no upload path; confirm reconciler can't be tricked into sharing to a foreign group (RLS is the backstop). PASS 2026-07-30 — all 5 checks verified, no Critical/Important findings (details in `.superpowers/sdd/progress.md`).
+- [x] 2. **/code-review** (Code Reviewer pass) over the phase diff; triage findings — fix Critical/Important, ledger the rest. DONE 2026-07-30 — user-triaged: 3 fixes applied (group-map centring via animateToRegion [confirmed real on device: map opened on fallback region], dead import removed, refresh spinner), remainder ledgered.
+- [x] 3. Close-out: mark Phase 4 ✅ COMPLETE in this plan's header + the foundation spec's Phase 4 line; update `.superpowers/sdd/progress.md`; final commit + push. DONE 2026-07-30.
 
 ---
 
