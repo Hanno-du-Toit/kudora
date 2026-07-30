@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MapView, { UrlTile } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,8 @@ export default function GroupMapScreen({ route }) {
   const [members, setMembers] = useState([]);
   const [membersError, setMembersError] = useState(null);
   const [myId, setMyId] = useState(null);
+  const mapRef = useRef(null);
+  const didCenterRef = useRef(false);
 
   // Resolve the signed-in user once — used to pick "self is always green".
   useEffect(() => {
@@ -66,6 +68,15 @@ export default function GroupMapScreen({ route }) {
   const allPoints = rendered.flatMap((r) => r.pts);
   const region = regionForPoints(allPoints);
 
+  // initialRegion is only read at MapView mount, which happens before the
+  // trails have loaded — animate to the real bounds once, when the first
+  // trails land. One-shot so later refreshes never yank the map mid-pan.
+  useEffect(() => {
+    if (didCenterRef.current || allPoints.length < 2) return;
+    didCenterRef.current = true;
+    mapRef.current?.animateToRegion(regionForPoints(allPoints), 600);
+  }, [trails]);
+
   const ownerIds = [...new Set(rendered.map((r) => r.trail.owner_id))];
   const legend = ownerIds.map((id) => {
     const member = members.find((m) => m.user_id === id);
@@ -81,6 +92,7 @@ export default function GroupMapScreen({ route }) {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: T.bg }]}>
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         mapType="satellite"
