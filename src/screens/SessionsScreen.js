@@ -327,7 +327,9 @@ export default function SessionsScreen() {
         setLoading(false);
         loadedOnce.current = true;
       });
-      return () => { active = false; };
+      // Blur cleanup: leaving the tab always returns Sessions to the list,
+      // so a tab round-trip never resumes inside a hunt detail.
+      return () => { active = false; setSelectedHunt(null); };
     }, [])
   );
 
