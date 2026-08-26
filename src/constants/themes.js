@@ -11,7 +11,7 @@ const HILLSHADE_LIGHT_URL =
 
 export const DARK = {
   // ── Map tiles ─────────────────────────────────────────────────
-  topoBase: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  topoBase: `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png?api_key=${process.env.EXPO_PUBLIC_STADIA_API_KEY}`,
   hillshadeUrl: HILLSHADE_DARK_URL,
   hillshadeOpacity: 0.25,
 
@@ -40,8 +40,7 @@ export const DARK = {
 
 export const LIGHT = {
   // ── Map tiles ─────────────────────────────────────────────────
-  // CartoDB Voyager: clean outdoor style, readable in bright sunlight
-  topoBase: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+  topoBase: `https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png?api_key=${process.env.EXPO_PUBLIC_STADIA_API_KEY}`,
   hillshadeUrl: HILLSHADE_LIGHT_URL,
   hillshadeOpacity: 0.10,
 

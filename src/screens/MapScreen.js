@@ -121,6 +121,7 @@ export default function MapScreen() {
               key={`base-${isDark ? 'dark' : 'light'}`}
               urlTemplate={T.topoBase}
               maximumZ={19}
+              flipY={false}
               shouldReplaceMapContent
             />
             {/* Terrain depth: hillshade only, zero text */}
