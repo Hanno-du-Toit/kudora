@@ -108,11 +108,7 @@ export default function GroupMapScreen({ route }) {
         toolbarEnabled={false}
       >
         <UrlTile
-          urlTemplate={
-            isDark
-              ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-              : 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-          }
+          urlTemplate={T.topoBase}
           maximumZ={19}
           shouldReplaceMapContent
         />
