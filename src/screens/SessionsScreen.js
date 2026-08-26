@@ -74,11 +74,7 @@ const HuntCard = React.memo(function HuntCard({ hunt, onPress, T, isDark }) {
         >
           {hunt.mapType === 'topo' && (
             <UrlTile
-              urlTemplate={
-                isDark
-                  ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                  : 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-              }
+              urlTemplate={T.topoBase}
               maximumZ={19}
               shouldReplaceMapContent
             />
@@ -180,11 +176,7 @@ function HuntDetailView({ hunt, onBack, onDeleted, T, isDark, insets }) {
       >
         {hunt.mapType === 'topo' && (
           <UrlTile
-            urlTemplate={
-              isDark
-                ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                : 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-            }
+            urlTemplate={T.topoBase}
             maximumZ={19}
             shouldReplaceMapContent
           />
